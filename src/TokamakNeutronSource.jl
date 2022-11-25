@@ -90,10 +90,7 @@ module ReactionRates
         c1::Float64
         c2::Float64
         c3::Float64
-        # c4::Float64
         c5::Float64
-        # c6::Float64
-        # c7::Float64
         t_min::Float64
 
         function ParametersDDN()
@@ -103,10 +100,7 @@ module ReactionRates
                 5.43360e-12,
                 5.85778e-3,
                 7.68222e-3,
-                # c4=None,
                 -2.96400e-6,
-                # c6=None,
-                # c7=None,
                 0.2,
             )
         end
