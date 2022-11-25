@@ -112,11 +112,9 @@ module ReactionRates
         end
     end
 
-    function σv_dt(tarray::AbstractArray{T,N}) where {T<:Real, N}
+    function σv_dt(tarray::AbstractArray{T,N}) where {T<:Real,N}
         σv_dt.(tarray)
     end
-
-
 
     const DDN = ParametersDDN()
 
@@ -136,11 +134,11 @@ module ReactionRates
     σv_ddn(t) = σv(t, DDN)
     sigmav_ddn = σv_ddn
 
-    function σv_ddn(tarray::AbstractArray{T,N}) where {T<:Real, N}
+    function σv_ddn(tarray::AbstractArray{T,N}) where {T<:Real,N}
         σv_ddn.(tarray)
     end
 
-    # TODO dvp: implement reaction rates for 3He(d,p)4He and D(d,p)T reactions
+# TODO dvp: implement reaction rates for 3He(d,p)4He and D(d,p)T reactions
 end
 
 end
