@@ -23,114 +23,136 @@ Module implements reaction rates parametrization algorithm of Bosch&Hale.
 """
 module ReactionRates
 
-    export σv_ddn, σv_dt, sigmav_ddn, sigmav_dt
+    export DDN, DT, σv, σv_ddn, σv_dt, sigmav_ddn, sigmav_dt
 
-    abstract type AbstractParameters end
+    """
+        Traits to select reaction rate algorithms.
+    """
+    abstract type CollidedParticles end
+    """
+        Trait to select T<d,n>4He reaction rate algorithm.
+    """
+    struct DT <: CollidedParticles end
+    """
+        Trait to select D<d,n>3He reaction rate algorithm.
+    """
+    struct DDN <: CollidedParticles end
 
-    function _θ(t::Float64, p::AbstractParameters)::Float64 end
+    """
+        σv(::Type{<:CollidedParticles}) -> Function
 
-    @inline function σv(t, p::AbstractParameters)::Float64
-        t < p.t_min && return 0.0
-        __θ = _θ(t, p)
-        ξ = ∛(p.b_g_sq / (4.0__θ))
-        p.c1 * __θ * sqrt(ξ / (p.m_r_c * t^3)) * exp(-3ξ)
+    Generic implementation.
+
+    # Arguments
+    - tp - trait to select DT reaction rate algorithm
+    """
+    function σv(tp::Type{<:CollidedParticles})
+        error("σv is not implemented for type $tp")
     end
-
-    struct ParametersDT <: AbstractParameters
-        b_g_sq::Float64
-        m_r_c::Float64
-        c1::Float64
-        c2::Float64
-        c3::Float64
-        c4::Float64
-        c5::Float64
-        c6::Float64
-        c7::Float64
-        t_min::Float64
-
-        function ParametersDT()
-            new(
-                34.3827^2,
-                1124656,
-                1.17302e-9,
-                1.51361e-2,
-                7.51886e-2,
-                4.60643e-3,
-                1.35000e-2,
-                -1.06750e-4,
-                1.36600e-5,
-                0.2,
-            )
-        end
-    end
-
-    const DT = ParametersDT()
-
-    _θ(t::Float64, p::ParametersDT)::Float64 =
-        t / (
-            1 -
-            (t * (p.c2 + t * (p.c4 + t * p.c6))) / (1 + t * (p.c3 + t * (p.c5 + t * p.c7)))
-        )
 
     """
         σv_dt(t) -> Float::64
 
-    \$T(d,n)^{4}He\$ reaction rate, \$cm^{3}/s\$
+    Implementation of T(d,n)4He reaction rate, cm3/s
 
     # Arguments
     - t - temperature, keV
 
 
     """
-    σv_dt(t) = σv(t, DT)
+    function σv_dt(t::Real)::Float64
+        b_g_sq = 34.3827^2
+        m_r_c = 1124656
+        c1 = 1.17302e-9
+        c2 = 1.51361e-2
+        c3 = 7.51886e-2
+        c4 = 4.60643e-3
+        c5 = 1.35000e-2
+        c6 = -1.06750e-4
+        c7 = 1.36600e-5
+        t_min = 0.2
+
+        t < t_min && return 0.0
+        θ = t / (1 - (t * (c2 + t * (c4 + t * c6))) / (1 + t * (c3 + t * (c5 + t * c7))))
+        ξ = ∛(b_g_sq / (4.0θ))
+        c1 * θ * sqrt(ξ / (m_r_c * t^3)) * exp(-3.0ξ)
+    end
+
+    """
+        σv(::Type{DT}) -> Function
+
+    T(d,n)4He reaction rate, cm3/s
+
+    # Arguments
+    - DT - trait to select DT reaction rate algorithm
+
+
+    """
+    σv(::Type{DT}) = σv_dt
+
+    """
+        sigmav_dt(t) -> Float64
+
+    T(d,n)4He reaction rate, cm3/s, alias
+
+
+    # Arguments
+    - t - temperature, keV
+
+
+    """
     sigmav_dt = σv_dt
-    struct ParametersDDN <: AbstractParameters
-        b_g_sq::Float64
-        m_r_c::Float64
-        c1::Float64
-        c2::Float64
-        c3::Float64
-        c5::Float64
-        t_min::Float64
-
-        function ParametersDDN()
-            new(
-                31.3970^2,
-                937814,
-                5.43360e-12,
-                5.85778e-3,
-                7.68222e-3,
-                -2.96400e-6,
-                0.2,
-            )
-        end
-    end
-
-    function σv_dt(tarray::AbstractArray{T,N}) where {T<:Real,N}
-        σv_dt.(tarray)
-    end
-
-    const DDN = ParametersDDN()
-
-    _θ(t::Float64, p::ParametersDDN)::Float64 =
-        t / (1 - t * p.c2 / (1 + t * (p.c3 + t * p.c5)))
 
     """
         σv_ddn(t) -> Float::64
 
-    \$D(d,n)^{3}He\$ reaction rate, \$cm^{3}/s\$
+    Implementation of D(d,n)3He reaction rate, cm3/s
+
+    Specialized for constants and θ computing.
 
     # Arguments
     - t - temperature, keV
 
 
     """
-    σv_ddn(t) = σv(t, DDN)
-    sigmav_ddn = σv_ddn
+    function σv_ddn(t)::Float64
+        b_g_sq = 31.3970^2
+        m_r_c = 937814
+        c1 = 5.43360e-12
+        c2 = 5.85778e-3
+        c3 = 7.68222e-3
+        c5 = -2.96400e-6
+        t_min = 0.2
 
-    function σv_ddn(tarray::AbstractArray{T,N}) where {T<:Real,N}
-        σv_ddn.(tarray)
+        t < t_min && return 0.0
+        θ = t / (1 - t * c2 / (1 + t * (c3 + t * c5)))
+        ξ = ∛(b_g_sq / (4.0θ))
+        c1 * θ * sqrt(ξ / (m_r_c * t^3)) * exp(-3.0ξ)
     end
+
+    """
+        σv(::Type{DDN}) -> Function
+
+    D(d,n)3He reaction rate, cm3/s
+
+    # Arguments
+    - DDN - trait to select DDN reaction rate algorithm
+
+
+    """
+    σv(::Type{DDN}) = σv_ddn
+
+    """
+    sigmav_ddn(t) -> Float::64
+
+    D(d,n)3He reaction rate, cm3/s, alias
+
+    # Arguments
+    - t - temperature, keV
+
+
+    """
+    sigmav_ddn = σv_ddn
 
 # TODO dvp: implement reaction rates for 3He(d,p)4He and D(d,p)T reactions
 end

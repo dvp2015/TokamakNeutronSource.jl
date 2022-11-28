@@ -97,49 +97,31 @@ using Test
         1.133e-17,
     ]
 
-    @testset "Scalar values, DT" begin
-        for (t, e) ∈ zip(temperatures, expected_dt)
-            @test σv_dt(t) ≈ e rtol = epsilon
+    expected = hcat(expected_dt, expected_ddn)
+
+    @testset "Selecting from DT and DD" begin
+        for (i, collided) in enumerate([DT, DDN])
+
+            @testset "Scalar values, $collided" begin
+                for (t, e) in zip(temperatures, expected[:, i])
+                    f = σv(collided)
+                    @test f(t) ≈ e rtol = epsilon
+                end
+            end
+
+            @testset "Vector argument, $collided" begin
+                f = σv(collided)
+                actual = f.(temperatures)
+                @test maximum(abs.(actual .- expected[:, i])) < epsilon
+            end
+
+            @testset "Matix argument, $collided" begin
+                indices = [1 3; 5 7]
+                temps = temperatures[indices]
+                f = σv(collided)
+                actual = f.(temps)   # alias should also work
+                @test maximum(abs.(actual .- expected[indices, i])) < epsilon
+            end
         end
-    end
-
-    @testset "Scalar values, DDN" begin
-        for (t, e) ∈ zip(temperatures, expected_ddn)
-            @test σv_ddn(t) ≈ e rtol = epsilon
-        end
-    end
-
-    @testset "Vectorization with '.', DT" begin
-        actual = σv_dt.(temperatures)
-        @test maximum(abs.(actual .- expected_dt)) < epsilon
-    end
-
-    @testset "Vectorization with '.', DDN" begin
-        actual = σv_ddn.(temperatures)
-        @test maximum(abs.(actual .- expected_ddn)) < epsilon
-    end
-
-    @testset "Vector argument, DT" begin
-        actual = σv_dt(temperatures)
-        @test maximum(abs.(actual .- expected_dt)) < epsilon
-    end
-
-    @testset "Vector argument, DDN" begin
-        actual = σv_ddn(temperatures)
-        @test maximum(abs.(actual .- expected_ddn)) < epsilon
-    end
-
-    @testset "Matix argument, DT" begin
-        indices = [1 3; 5 7]
-        temps = temperatures[indices]
-        actual = sigmav_dt(temps)   # alias should also work
-        @test maximum(abs.(actual .- expected_dt[indices])) < epsilon
-    end
-
-    @testset "Matix argument, DDN" begin
-        indices = [1 3; 8 10]
-        temps = temperatures[indices]
-        actual = sigmav_ddn(temps)
-        @test maximum(abs.(actual .- expected_ddn[indices])) < epsilon
     end
 end
