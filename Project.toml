@@ -3,6 +3,11 @@ uuid = "b9cabe2b-166f-490c-9eed-ccf8ae448f22"
 authors = ["dvp2015 <dmitri_portnov@yahoo.com>"]
 version = "0.1.0"
 
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+EQDSKReader = "0d45e213-aaf5-468d-97e2-5d9984e6e107"
+XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
+
 [compat]
 julia = "1.8.3"
 
