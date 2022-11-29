@@ -13,6 +13,8 @@ The plasma state is presented with:
 """
 module TokamakNeutronSource
 
+export ReactionRates, Reactivity, PlasmaDistribution
+
 include("reaction-rates.jl")
 
 module Reactivity

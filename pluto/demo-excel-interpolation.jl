@@ -14,6 +14,9 @@ path = expanduser("~/.julia/dev/TokamakNeutronSource/test/data/TRT_215_8T_NBI.xl
 md"""
 # Loading xlsx with plasma parameters
 
+
+## Loading
+
 File: "$path".
 
 Here are the columns "ψ", "T", "n":
@@ -37,8 +40,17 @@ describe(df)
 
 # ╔═╡ 48c0e589-3141-4add-bf74-d0b629a04ab0
 md"""
+## Fitting
+
 From this table we create interpolators $T(ψ)$ and $n(ψ)$.
 The following figure demonstrates fitting quality:
+"""
+
+# ╔═╡ b9928a72-54bd-433a-b1ab-e846957ffef3
+md"""
+## The code is below
+
+The cells can be hidden.
 """
 
 # ╔═╡ 096e8305-8679-48e1-8974-acb5d003c7c8
@@ -107,7 +119,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.8.3"
 manifest_format = "2.0"
-project_hash = "fa7b6a955bd2fd20dbb95d1645e443d1c78872d7"
+project_hash = "b55c0554d5c6a13233e548bcd8e20a62bd0f7557"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -1436,10 +1448,11 @@ version = "3.5.0+0"
 # ╟─f0da7363-e781-47e9-bb3e-5840eb76ea7c
 # ╟─a15c528e-d934-470e-9689-7a92615146ec
 # ╠═083a8c3c-1498-4b46-ad0d-2f0b783c085f
-# ╟─48c0e589-3141-4add-bf74-d0b629a04ab0
+# ╠═48c0e589-3141-4add-bf74-d0b629a04ab0
 # ╟─2f767c2d-f783-476d-b10d-3b6e287e394b
+# ╟─b9928a72-54bd-433a-b1ab-e846957ffef3
 # ╟─f41115fb-672a-4cc2-bcd4-6a5e642a7f54
-# ╠═096e8305-8679-48e1-8974-acb5d003c7c8
-# ╠═c8b705bb-e057-4532-bad7-295adbf3823c
+# ╟─096e8305-8679-48e1-8974-acb5d003c7c8
+# ╟─c8b705bb-e057-4532-bad7-295adbf3823c
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
