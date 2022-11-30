@@ -103,7 +103,7 @@
 
             @testset "Vector argument, $collided" begin
                 f = σv(collided)
-                actual = f.(temperatures)
+                actual = f(temperatures)
                 @test maximum(abs.(actual .- expected[:, i])) < epsilon
             end
 
@@ -111,7 +111,7 @@
                 indices = [1 3; 5 7]
                 temps = temperatures[indices]
                 f = σv(collided)
-                actual = f.(temps)   # alias should also work
+                actual = f(temps)   # alias should also work
                 @test maximum(abs.(actual .- expected[indices, i])) < epsilon
             end
         end

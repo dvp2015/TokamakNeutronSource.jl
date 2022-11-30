@@ -45,7 +45,7 @@ Implementation of T(d,n)4He reaction rate, cm3/s
 
 
 """
-function σv_dt(t::Real)::Float64
+function σv_dt(t::T)::Float64 where {T<:Real}
     b_g_sq = 34.3827^2
     m_r_c = 1124656
     c1 = 1.17302e-9
@@ -62,6 +62,8 @@ function σv_dt(t::Real)::Float64
     ξ = ∛(b_g_sq / (4.0θ))
     c1 * θ * sqrt(ξ / (m_r_c * t^3)) * exp(-3.0ξ)
 end
+
+σv_dt(t::AbstractArray{T,N}) where {T,N} =  σv_dt.(t)
 
 """
     σv(::Type{DT}) -> Function
@@ -98,7 +100,7 @@ Implementation of D(d,n)3He reaction rate, cm3/s
 
 
 """
-function σv_ddn(t)::Float64
+function σv_ddn(t::T)::Float64 where {T<:Real}
     b_g_sq = 31.3970^2
     m_r_c = 937814
     c1 = 5.43360e-12
@@ -112,6 +114,8 @@ function σv_ddn(t)::Float64
     ξ = ∛(b_g_sq / (4.0θ))
     c1 * θ * sqrt(ξ / (m_r_c * t^3)) * exp(-3.0ξ)
 end
+
+σv_ddn(t::AbstractArray{T,N}) where {T,N} = σv_ddn.(t)
 
 """
     σv(::Type{DDN}) -> Function
