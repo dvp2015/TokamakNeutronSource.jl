@@ -25,13 +25,14 @@ include("reaction-rates.jl")
     Compute I(r,z).
 """
 module PlasmaDistribution
-    using EQDSKReader, DataFrames, Interpolations, XLSX
+    using Cuba, DataFrames, Interpolations, XLSX
+    using EQDSKReader
     using ..ReactionRates
 
     export Content, DDN, DT, σv
     export AbstractDistribution, DDDistribution, DTDistribution
-    export Ti, n, σv, I
-    export concentrations
+    export domain, ψ, n, concentrations, σv, Ti, I
+    export total_yield
     export load_excel, load_psi
 
     function dR_dV(n, σv)
@@ -44,22 +45,78 @@ module PlasmaDistribution
 
     abstract type AbstractDistribution end
 
+    domain(d::AbstractDistribution) = d.rmin, d.rmax, d.zmin, d.zmax
     ψ(d::AbstractDistribution) = d.ψ
     n(d::AbstractDistribution) = d.n
     n(d::AbstractDistribution, ψ) = n(d)(ψ)
     n(d::AbstractDistribution, r, z) = n(d, ψ(d)(r, z))
-    concentrations(d::AbstractDistribution) = ψ ->  (n(d,ψ),)
+    concentrations(d::AbstractDistribution) = ψ -> (n(d, ψ),)
     concentrations(d::AbstractDistribution, ψ) = concentrations(d)(ψ)
-    concentrations(d::AbstractDistribution, r, z) = concentrations(d, ψ(d)(r,z))
+    concentrations(d::AbstractDistribution, r, z) = concentrations(d, ψ(d)(r, z))
     Ti(d::AbstractDistribution) = d.T
     Ti(d::AbstractDistribution, ψ) = Ti(d)(ψ)
     Ti(d::AbstractDistribution, r, z) = Ti(d, ψ(d)(r, z))
     σv(d::AbstractDistribution) = d.σv
     σv(d::AbstractDistribution, ψ) = σv(d)(Ti(d)(ψ))
     σv(d::AbstractDistribution, r, z) = σv(d, ψ(d)(r, z))
-    I(d::AbstractDistribution) = ψ -> dR_dV(n(d, ψ), σv(d, ψ))  # mono particle rate
+
+    # Be careful with broadcasting over r, z given as matrices.
+    # Either the two matrices should be of the same shape (like meshgrid)
+    # or represent a grid points.
+
+    """
+        I(d::AbstractDistribution) -> I(ψ)
+
+    ## Returns
+        - function of neutron source intensity vs. ψ
+    """
+    I(d::AbstractDistribution) = ψ -> dR_dV(n(d, ψ), σv(d, ψ))  # DD like rate by default
+
+    """
+        I(d::AbstractDistribution, ψ) -> Float64 or Array{Float64}
+
+    ## Returns
+        - neutron source intensity, cm^-3⋅c^-1,
+          either scalar or array of the same shape as ψ
+    """
     I(d::AbstractDistribution, ψ) = I(d)(ψ)
+
     I(d::AbstractDistribution, r, z) = I(d, ψ(d)(r, z))
+
+    """
+        total_yield(d::AbstractDistribution) -> Float64
+
+    Compute total neutron yield for distribution `d`.
+
+    Normalization:
+    - 2π    - integral over torroidal direction,
+    - 1e6   - m^3/cm^3 (combined with above)
+    - ΔR⋅ΔZ - area of R,Z integration domain, square meters
+
+    ## Arguments
+    - d - plasma distribution specification
+
+    ## Returns
+    - total neutron yield, s^-1
+    - error, s^-1
+    - number of estimation
+    - fail or not fail
+    """
+    function total_yield(d::AbstractDistribution)
+        rmin, rmax, zmin, zmax = domain(d)
+        R0 = rmin
+        ΔR = rmax - R0
+        Z0 = zmin
+        ΔZ = zmax - Z0
+        function integrand(x, f)
+            r = ΔR * x[1] + R0
+            z = ΔZ * x[2] + Z0
+            f[1] = r * I(d, r, z)
+        end
+        integral, error, _, neval, fail, _ = cuhre(integrand)
+        normalization = 2.0e6π * ΔR * ΔZ
+        (integral[1] * normalization, error[1] * normalization, neval, fail)
+    end
 
     struct DDDistribution <: AbstractDistribution
         rmin
@@ -132,7 +189,7 @@ module PlasmaDistribution
     ## Returns
         Function to compute neutron source strengs as functions of ψ, cm^-3s-1.
     """
-    function I(d::T) where {T<:DTDistribution}
+    function I(d::DTDistribution)
         cf = concentrations(d)
         ψ -> dR_dV(cf(ψ)..., σv(d, ψ))
     end

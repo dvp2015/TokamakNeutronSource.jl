@@ -96,68 +96,43 @@ end
 plot_neutron_source(eqdsk, distr)
 
 # ╔═╡ f453daec-8564-48e4-8869-834d3ef64fd7
-
+let
+	_ψ = distr.ψ
+	_I = I(distr)
+	__I(r,z) = _I(_ψ(r,z))
+end
 
 # ╔═╡ 2c9df88e-b0a1-4078-a539-685c3c85f676
-function compute_total_output(distr, I::Function)
-	function scaler(a, b)
-		dx = b - a
-		x -> dx * x + a
-	end
-	rscaler = scaler(distr.rmin, distr.rmax)
-	zscaler = scaler(distr.zmin, distr.zmax)	
+function compute_total_output(distr)
+	R0 = distr.rmin
+	ΔR = distr.rmax - R0
+	Z0 = distr.zmin
+	ΔZ = distr.zmax - Z0
+	_ψ = distr.ψ
+	_I = I(distr)
+	__I(r,z) = _I(_ψ(r,z))
 	function integrand(x, f) 
-		println("x=", x)
-		f[1] = x[1]*I(rscaler(x[1]), zscaler(x[2]))
-		println("f=", f)
+		r = ΔR * x[1] + R0
+		z = ΔZ * x[2] + Z0
+		f[1] = r*__I(r, z)
 	end
-	cuhre(integrand)
-	# integral, error, probability, neval, fail, nregions = cuhre(integrand)
-	# # Normalization:
-	# # 2π - integral over torroidal direction, 
-	# # (...)(...) - area of R,Z integration domain, square meters
-	# # 1e6 - m^3 -> cm^3
-	# normalization = 2π*(distr.rmax-distr.rmin)*(distr.zmax - distr.zmin)*1e6
-	# integral*normalization, error*normalization, probability, neval, fail, nregions
+	# cuhre(integrand, rtol=1e-4)
+	integral, error, probability, neval, fail, nregions = cuhre(integrand)
+	# Normalization:
+	# 2π - integral over torroidal direction, 
+	# (...)(...) - area of R,Z integration domain, square meters
+	# 1e6 - m^3/cm^3
+	normalization = 2.0e6π*ΔR*ΔZ
+	(
+		integral[1]*normalization,
+		error[1]*normalization,
+		neval,
+		fail
+	)
 end
 
 # ╔═╡ a3e884fe-362a-4be6-aba6-6cd33da663ce
-let
-	function _I(r,z)
-		println("r= ", r, ", z= ", z)
-		I(distr, r, z)
-	end
-	compute_total_output(distr, _I)
-end
-
-# ╔═╡ a49ac38f-c3b9-4775-b845-939c9d0f8834
-function compute_total_output_vectorized(distr::DDDistribution, I::Function)
-	function scaler(a, b)
-		dx = b - a
-		x -> (dx .* x) .+ a
-	end
-	rscaler = scaler(distr.rmin, distr.rmax)
-	zscaler = scaler(distr.zmin, distr.zmax)	
-	function integrand(x, f) 
-		println("x=", x)
-		f[:] .= [r*I(r, z) for (r,z) in zip(rscaler(x[1,:]), zscaler(x[2,:]))]
-		println("f=", f)
-	end
-	cuhre(integrand, nvec=1)
-	# integral, error, probability, neval, fail, nregions = cuhre(integrand)
-	# normalization = 2π*(distr.rmax-distr.rmin)*(distr.zmax - distr.zmin)*10000
-	# integral*normalization, error*normalization, probability, neval, fail, nregions
-end
-
-# ╔═╡ 176f455b-bac2-402b-bc9f-e2ae80df5477
-let
-	function _I(r,z)
-		println("r= ", r, ", z= ", z)
-		I(distr, r, z)
-	end
-	compute_total_output_vectorized(distr, _I)
-	# TODO dvp: check why the results differ.
-end
+@time compute_total_output(distr)
 
 # ╔═╡ Cell order:
 # ╠═26433bb2-6ff1-11ed-0943-01e79517b4f5
@@ -174,5 +149,3 @@ end
 # ╠═f453daec-8564-48e4-8869-834d3ef64fd7
 # ╠═2c9df88e-b0a1-4078-a539-685c3c85f676
 # ╠═a3e884fe-362a-4be6-aba6-6cd33da663ce
-# ╠═a49ac38f-c3b9-4775-b845-939c9d0f8834
-# ╠═176f455b-bac2-402b-bc9f-e2ae80df5477

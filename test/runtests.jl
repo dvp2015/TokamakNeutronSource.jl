@@ -27,6 +27,10 @@ split(x, δ = 0.1) = [x - δ, x + δ]
                 @test I(distr, eqdsk.rmaxis, eqdsk.zmaxis) ≈ 1.278e10 rtol=0.001
                 actual = I(distr, split(eqdsk.rmaxis), split(eqdsk.zmaxis))
                 @test size(actual) == (2, 2)
+                total, err, neval, fail = total_yield(distr)
+                @assert fail == 0
+                @test total ≈ 9.939e16 rtol=1e-4
+                @test err / total < 1e-4
             end
             @testset "DT Distribution" begin
                 distr = DTDistribution(eqdsk, df)
@@ -37,6 +41,10 @@ split(x, δ = 0.1) = [x - δ, x + δ]
                 # test vectorization
                 actual = I(distr, split(eqdsk.rmaxis), split(eqdsk.zmaxis))
                 @test size(actual) == (2, 2)
+                total, err, neval, fail = total_yield(distr)
+                @assert fail == 0
+                @test total ≈ 8.438e18 rtol=1e-4
+                @test err / total < 1e-4
             end
         end
     end

@@ -1,9 +1,10 @@
 name = "TokamakNeutronSource"
 uuid = "b9cabe2b-166f-490c-9eed-ccf8ae448f22"
 authors = ["dvp2015 <dmitri_portnov@yahoo.com>"]
-version = "0.2.0"
+version = "0.3.0"
 
 [deps]
+Cuba = "8a292aeb-7a57-582c-b821-06e4c11590b1"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 EQDSKReader = "0d45e213-aaf5-468d-97e2-5d9984e6e107"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
