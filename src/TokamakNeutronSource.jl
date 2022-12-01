@@ -13,7 +13,7 @@ The plasma state is presented with:
 """
 module TokamakNeutronSource
 
-export ReactionRates, PlasmaDistribution
+export ReactionRates, PlasmaDistributions, Integration
 
 include("reaction-rates.jl")
 
@@ -24,15 +24,14 @@ include("reaction-rates.jl")
     Read excel and build n(ψ) and T(ψ).
     Compute I(r,z).
 """
-module PlasmaDistribution
-    using Cuba, DataFrames, Interpolations, XLSX
+module PlasmaDistributions
+    using DataFrames, Interpolations, XLSX
     using EQDSKReader
     using ..ReactionRates
 
     export Content, DDN, DT, σv
     export AbstractDistribution, DDDistribution, DTDistribution
     export domain, ψ, n, concentrations, σv, Ti, I
-    export total_yield
     export load_excel, load_psi
 
     function dR_dV(n, σv)
@@ -82,41 +81,6 @@ module PlasmaDistribution
     I(d::AbstractDistribution, ψ) = I(d)(ψ)
 
     I(d::AbstractDistribution, r, z) = I(d, ψ(d)(r, z))
-
-    """
-        total_yield(d::AbstractDistribution) -> Float64
-
-    Compute total neutron yield for distribution `d`.
-
-    Normalization:
-    - 2π    - integral over torroidal direction,
-    - 1e6   - m^3/cm^3 (combined with above)
-    - ΔR⋅ΔZ - area of R,Z integration domain, square meters
-
-    ## Arguments
-    - d - plasma distribution specification
-
-    ## Returns
-    - total neutron yield, s^-1
-    - error, s^-1
-    - number of estimation
-    - fail or not fail
-    """
-    function total_yield(d::AbstractDistribution)
-        rmin, rmax, zmin, zmax = domain(d)
-        R0 = rmin
-        ΔR = rmax - R0
-        Z0 = zmin
-        ΔZ = zmax - Z0
-        function integrand(x, f)
-            r = ΔR * x[1] + R0
-            z = ΔZ * x[2] + Z0
-            f[1] = r * I(d, r, z)
-        end
-        integral, error, _, neval, fail, _ = cuhre(integrand)
-        normalization = 2.0e6π * ΔR * ΔZ
-        (integral[1] * normalization, error[1] * normalization, neval, fail)
-    end
 
     struct DDDistribution <: AbstractDistribution
         rmin
@@ -219,6 +183,74 @@ module PlasmaDistribution
 
 end
 
-using .PlasmaDistribution
+using .PlasmaDistributions
+
+module Integration
+
+    using Cuba
+    using ..PlasmaDistributions
+
+    export total_yield
+
+    """
+    total_yield(d::AbstractDistribution) -> Float64
+
+    Compute total neutron yield for distribution `d`.
+
+    Calculates integral of I(r,z) in cylinder coordinates (R,Z,ϕ),
+    where
+    - R - major radius
+    - Z - height
+    - ϕ - torroidal angle
+
+    ## Arguments
+    - d - plasma distribution specification
+
+    ## Returns
+    - total neutron yield, s^-1
+    - error, s^-1
+    - number of estimation
+    - fail or not fail
+    """
+    function total_yield(d::AbstractDistribution)
+        rmin, rmax, zmin, zmax = domain(d)
+        R0 = rmin
+        ΔR = rmax - R0
+        Z0 = zmin
+        ΔZ = zmax - Z0
+        function integrand(x, f)
+            r = ΔR * x[1] + R0
+            z = ΔZ * x[2] + Z0
+            f[1] = r * I(d, r, z)
+        end
+        integral, error, _, neval, fail, _ = cuhre(integrand)
+        # Normalization:
+        # - 2π    - integral over torroidal angle,
+        # - 1e6   - m^3/cm^3 (combined with above)
+        # - ΔR⋅ΔZ - area of R,Z integration domain, square meters
+        normalization = 2.0e6π * ΔR * ΔZ
+        integral[1] * normalization, error[1] * normalization, neval, fail
+    end
+
+end
+
+using .Integration
+
+module Testing
+
+    using ..PlasmaDistributions
+
+    export TestDistribution
+
+    struct TestDistribution <: AbstractDistribution    end
+
+    domain(::TestDistribution) = 1.5, 2.5, -0.5, 0.5
+    in_domain(r, z) = (1.5 <= r <= 2.5 && -0.5 <= z <= 0.5 ? 0.0 : 1.0)
+    ψ(d::TestDistribution) = (r, z) ->  in_domain.(r, z)
+    n(::TestDistribution) = ψ -> 1.0 .- ψ
+    Ti(::TestDistribution) = ψ -> 1.0 .- ψ
+    I(::TestDistribution) =  ψ -> 1.0 .- ψ
+
+end
 
 end

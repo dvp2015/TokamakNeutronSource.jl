@@ -5,11 +5,12 @@ split(x, δ = 0.1) = [x - δ, x + δ]
 
 @testset "TokamakNeutronSource.jl" begin
     # include("reaction-rates.jl")
-    @testset "PlasmaDistribution" begin
+    @testset "PlasmaDistributions" begin
         let excel_path = joinpath(@__DIR__, "data", "TRT_215_8T_NBI.xlsx")
             eqdsk_path = joinpath(@__DIR__, "data", "beforeTQ.eqdsk")
             @test isfile(eqdsk_path)
-            using TokamakNeutronSource.PlasmaDistribution
+            using TokamakNeutronSource.PlasmaDistributions
+            using TokamakNeutronSource.Integration
             df = load_excel(excel_path)
             @testset "Excel" begin
                 @test df[1, 1] == 0.0
