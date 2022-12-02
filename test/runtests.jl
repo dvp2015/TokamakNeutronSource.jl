@@ -10,7 +10,7 @@ split(x, δ = 0.1) = [x - δ, x + δ]
             eqdsk_path = joinpath(@__DIR__, "data", "beforeTQ.eqdsk")
             @test isfile(eqdsk_path)
             using TokamakNeutronSource.PlasmaDistributions
-            using TokamakNeutronSource.Integration
+            using TokamakNeutronSource.Integrations
             df = load_excel(excel_path)
             @testset "Excel" begin
                 @test df[1, 1] == 0.0
@@ -48,5 +48,13 @@ split(x, δ = 0.1) = [x - δ, x + δ]
                 @test err / total < 1e-4
             end
         end
+    end
+    @testset "Testing utils" begin
+        using TokamakNeutronSource.Integrations
+        using TokamakNeutronSource.Testing
+        total, err, neval, fail = total_yield(TestDistribution())
+        @assert fail == 0
+        @test total ≈ 0.5*1e6*2π*(2.5^2 - 1.5^2) rtol=1e-4
+        @test err / total < 1e-4
     end
 end

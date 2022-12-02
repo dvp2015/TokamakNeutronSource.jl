@@ -13,7 +13,7 @@ The plasma state is presented with:
 """
 module TokamakNeutronSource
 
-export ReactionRates, PlasmaDistributions, Integration
+export ReactionRates, PlasmaDistributions, Integrations, Testing
 
 include("reaction-rates.jl")
 
@@ -34,13 +34,21 @@ module PlasmaDistributions
     export domain, ψ, n, concentrations, σv, Ti, I
     export load_excel, load_psi
 
-    function dR_dV(n, σv)
-        @. 0.5 * n^2 * σv
-    end
 
-    function dR_dV(n1, n2, σv)
-        @. n1 * n2 * σv
-    end
+    """
+        dR_dV(n, σv)
+
+    Reactivity density, DD case, cm-3s-1
+    """
+    dR_dV(n, σv) =  @. 0.5 * n^2 * σv
+
+
+    """
+        dR_dV(n, σv)
+
+    Reactivity density, DT case, cm-3s-1
+    """
+    dR_dV(n1, n2, σv) =   @. n1 * n2 * σv
 
     abstract type AbstractDistribution end
 
@@ -185,12 +193,12 @@ end
 
 using .PlasmaDistributions
 
-module Integration
+module Integrations
 
     using Cuba
     using ..PlasmaDistributions
 
-    export total_yield
+    export total_yield, torroidal_segment_yield, integrate_torroidal_segment
 
     """
     total_yield(d::AbstractDistribution) -> Float64
@@ -214,27 +222,38 @@ module Integration
     """
     function total_yield(d::AbstractDistribution)
         rmin, rmax, zmin, zmax = domain(d)
-        R0 = rmin
-        ΔR = rmax - R0
-        Z0 = zmin
-        ΔZ = zmax - Z0
+        integrand(r, z) = I(d, r, z)
+        torroidal_segment_yield(integrand, (rmin, rmax), (zmin, zmax))
+    end
+
+    function torroidal_segment_yield(I, rbin, zbin)
+        integral, error, neval, fail = integrate_torroidal_segment(I, rbin, zbin)
+        # Normalization:
+        # - 1e6   - m^3/cm^3
+        integral * 1e6, error * 1e6, neval, fail
+    end
+
+    function integrate_torroidal_segment(I, rbin, zbin)
+        R0 = rbin[1]
+        ΔR = rbin[2] - R0
+        Z0 = zbin[1]
+        ΔZ = zbin[2] - Z0
         function integrand(x, f)
             r = ΔR * x[1] + R0
             z = ΔZ * x[2] + Z0
-            f[1] = r * I(d, r, z)
+            f[1] = r * I(r, z)
         end
         integral, error, _, neval, fail, _ = cuhre(integrand)
         # Normalization:
         # - 2π    - integral over torroidal angle,
-        # - 1e6   - m^3/cm^3 (combined with above)
         # - ΔR⋅ΔZ - area of R,Z integration domain, square meters
-        normalization = 2.0e6π * ΔR * ΔZ
+        normalization = 2π * ΔR * ΔZ
         integral[1] * normalization, error[1] * normalization, neval, fail
     end
 
 end
 
-using .Integration
+using .Integrations
 
 module Testing
 
@@ -242,14 +261,20 @@ module Testing
 
     export TestDistribution
 
+    """
+        struct TestDistribution
+
+    Distribution for testing and code optimization.
+    Total yield is to be 1e6*2π*(2.5^2 - 1.5^2)/2.
+    """
     struct TestDistribution <: AbstractDistribution    end
 
-    domain(::TestDistribution) = 1.5, 2.5, -0.5, 0.5
+    PlasmaDistributions.domain(::TestDistribution) = 1.5, 2.5, -0.5, 0.5
+    PlasmaDistributions.ψ(d::TestDistribution) = (r, z) ->  in_domain.(r, z)
+    PlasmaDistributions.n(::TestDistribution) = ψ -> 1.0 .- ψ
+    PlasmaDistributions.Ti(::TestDistribution) = ψ -> 1.0 .- ψ
+    PlasmaDistributions.I(::TestDistribution) =  ψ -> 1.0 .- ψ
     in_domain(r, z) = (1.5 <= r <= 2.5 && -0.5 <= z <= 0.5 ? 0.0 : 1.0)
-    ψ(d::TestDistribution) = (r, z) ->  in_domain.(r, z)
-    n(::TestDistribution) = ψ -> 1.0 .- ψ
-    Ti(::TestDistribution) = ψ -> 1.0 .- ψ
-    I(::TestDistribution) =  ψ -> 1.0 .- ψ
 
 end
 

@@ -96,43 +96,17 @@ end
 plot_neutron_source(eqdsk, distr)
 
 # ╔═╡ f453daec-8564-48e4-8869-834d3ef64fd7
-let
-	_ψ = distr.ψ
-	_I = I(distr)
-	__I(r,z) = _I(_ψ(r,z))
-end
-
-# ╔═╡ 2c9df88e-b0a1-4078-a539-685c3c85f676
-function compute_total_output(distr)
-	R0 = distr.rmin
-	ΔR = distr.rmax - R0
-	Z0 = distr.zmin
-	ΔZ = distr.zmax - Z0
-	_ψ = distr.ψ
-	_I = I(distr)
-	__I(r,z) = _I(_ψ(r,z))
-	function integrand(x, f) 
-		r = ΔR * x[1] + R0
-		z = ΔZ * x[2] + Z0
-		f[1] = r*__I(r, z)
-	end
-	# cuhre(integrand, rtol=1e-4)
-	integral, error, probability, neval, fail, nregions = cuhre(integrand)
-	# Normalization:
-	# 2π - integral over torroidal direction, 
-	# (...)(...) - area of R,Z integration domain, square meters
-	# 1e6 - m^3/cm^3
-	normalization = 2.0e6π*ΔR*ΔZ
-	(
-		integral[1]*normalization,
-		error[1]*normalization,
-		neval,
-		fail
-	)
+begin
+	allowed_variance = 0.1
+	md"""
+	# Define appropiate mesh
+	
+	The mesh quality criteria - the variance of I(r,z) in a cell not more than $(allowed_variance*100)%.
+	"""
 end
 
 # ╔═╡ a3e884fe-362a-4be6-aba6-6cd33da663ce
-@time compute_total_output(distr)
+
 
 # ╔═╡ Cell order:
 # ╠═26433bb2-6ff1-11ed-0943-01e79517b4f5
@@ -147,5 +121,4 @@ end
 # ╠═e7b4f8b3-f3f0-4d5c-9080-eea93e01dd17
 # ╠═6888f022-b9dc-43f6-8759-772f97afc734
 # ╠═f453daec-8564-48e4-8869-834d3ef64fd7
-# ╠═2c9df88e-b0a1-4078-a539-685c3c85f676
 # ╠═a3e884fe-362a-4be6-aba6-6cd33da663ce
