@@ -31,24 +31,23 @@ module PlasmaDistributions
 
     export Content, DDN, DT, σv
     export AbstractDistribution, DDDistribution, DTDistribution
-    export domain, ψ, n, concentrations, σv, Ti, I
+    export domain, ψ, n, σv, Ti, I
+    export concentrations
     export load_excel, load_psi
-
 
     """
         dR_dV(n, σv)
 
     Reactivity density, DD case, cm-3s-1
     """
-    dR_dV(n, σv) =  @. 0.5 * n^2 * σv
-
+    dR_dV(n, σv) = @. 0.5 * n^2 * σv
 
     """
         dR_dV(n, σv)
 
     Reactivity density, DT case, cm-3s-1
     """
-    dR_dV(n1, n2, σv) =   @. n1 * n2 * σv
+    dR_dV(n1, n2, σv) = @. n1 * n2 * σv
 
     abstract type AbstractDistribution end
 
@@ -57,9 +56,6 @@ module PlasmaDistributions
     n(d::AbstractDistribution) = d.n
     n(d::AbstractDistribution, ψ) = n(d)(ψ)
     n(d::AbstractDistribution, r, z) = n(d, ψ(d)(r, z))
-    concentrations(d::AbstractDistribution) = ψ -> (n(d, ψ),)
-    concentrations(d::AbstractDistribution, ψ) = concentrations(d)(ψ)
-    concentrations(d::AbstractDistribution, r, z) = concentrations(d, ψ(d)(r, z))
     Ti(d::AbstractDistribution) = d.T
     Ti(d::AbstractDistribution, ψ) = Ti(d)(ψ)
     Ti(d::AbstractDistribution, r, z) = Ti(d, ψ(d)(r, z))
@@ -91,14 +87,14 @@ module PlasmaDistributions
     I(d::AbstractDistribution, r, z) = I(d, ψ(d)(r, z))
 
     struct DDDistribution <: AbstractDistribution
-        rmin
-        rmax
-        zmin
-        zmax
-        ψ
-        T
-        n
-        σv
+        rmin::Float64
+        rmax::Float64
+        zmin::Float64
+        zmax::Float64
+        ψ::Function
+        T::Function
+        n::Function
+        σv::Function
     end
 
     function DDDistribution(c::Content, df::DataFrame)
@@ -108,15 +104,15 @@ module PlasmaDistributions
     end
 
     struct DTDistribution <: AbstractDistribution
-        rmin
-        rmax
-        zmin
-        zmax
-        ψ
-        T
-        n
-        σv
-        fuel_ratio
+        rmin::Float64
+        rmax::Float64
+        zmin::Float64
+        zmax::Float64
+        ψ::Function
+        T::Function
+        n::Function
+        σv::Function
+        fuel_ratio::Float64
     end
 
     function DTDistribution(c::Content, df::DataFrame, fuel_ratio=0.5)
@@ -139,15 +135,15 @@ module PlasmaDistributions
         nd, nt
     end
 
-    """
-    Function of ψ fuel ratio.
-    """
-    function _do_get_concentrations(ψ, n, fuel_ratio)
-        _n = n(ψ)
-        nt = fuel_ratio.(ψ) .* _n
-        nd = _n - nt
-        nd, nt
-    end
+    # """
+    # Function of ψ fuel ratio.
+    # """
+    # function _do_get_concentrations(ψ, n, fuel_ratio)
+    #     _n = n(ψ)
+    #     nt = fuel_ratio.(ψ) .* _n
+    #     nd = _n - nt
+    #     nd, nt
+    # end
 
     concentrations(d::DTDistribution) = ψ -> _do_get_concentrations(ψ, d.n, d.fuel_ratio)
     concentrations(d::DTDistribution, ψ) = concentrations(d)(ψ)
@@ -199,6 +195,7 @@ module Integrations
     using ..PlasmaDistributions
 
     export total_yield, torroidal_segment_yield, integrate_torroidal_segment
+    export torroidal_segment_moment_0, torroidal_segment_moment_1
 
     """
     total_yield(d::AbstractDistribution) -> Float64
@@ -223,15 +220,15 @@ module Integrations
     function total_yield(d::AbstractDistribution)
         rmin, rmax, zmin, zmax = domain(d)
         integrand(r, z) = I(d, r, z)
-        torroidal_segment_yield(integrand, (rmin, rmax), (zmin, zmax))
+        integrate_torroidal_segment(integrand, (rmin, rmax), (zmin, zmax))
     end
 
-    function torroidal_segment_yield(I, rbin, zbin)
-        integral, error, neval, fail = integrate_torroidal_segment(I, rbin, zbin)
-        # Normalization:
-        # - 1e6   - m^3/cm^3
-        integral * 1e6, error * 1e6, neval, fail
-    end
+    # function torroidal_segment_yield(I, rbin, zbin)
+    #     integral, error, neval, fail = integrate_torroidal_segment(I, rbin, zbin)
+    #     # Normalization:
+    #     # - 1e6   - m^3/cm^3
+    #     integral * 1e6, error * 1e6, neval, fail
+    # end
 
     function integrate_torroidal_segment(I, rbin, zbin)
         R0 = rbin[1]
@@ -246,9 +243,33 @@ module Integrations
         integral, error, _, neval, fail, _ = cuhre(integrand)
         # Normalization:
         # - 2π    - integral over torroidal angle,
+        # - 1e6   - m^3/cm^3
         # - ΔR⋅ΔZ - area of R,Z integration domain, square meters
-        normalization = 2π * ΔR * ΔZ
+        normalization = 2e6π * ΔR * ΔZ
         integral[1] * normalization, error[1] * normalization, neval, fail
+    end
+
+    torroidal_segment_moment_0(I, rbin, zbin) = integrate_torroidal_segment(I, rbin, zbin)
+
+    function torroidal_segment_moment_1(I, rbin, zbin)
+        R0 = rbin[1]
+        ΔR = rbin[2] - R0
+        Z0 = zbin[1]
+        ΔZ = zbin[2] - Z0
+        function integrand(x, f)
+            r = ΔR * x[1] + R0
+            z = ΔZ * x[2] + Z0
+            f[:] = [r, z] .* (r * I(r, z))
+        end
+        integral0, error0, neval, fail = integrate_torroidal_segment(I, rbin, zbin)
+        fail == 0 || raise(ArgumentError("Cannot integrate with default args"))
+        integral, error, _, neval, fail, _ = cuhre(integrand, 2, 2)
+        # Normalization:
+        # - 2π    - integral over torroidal angle,
+        # - 1e6   - m^3/cm^3
+        # - ΔR⋅ΔZ - area of R,Z integration domain, square meters
+        normalization = 2e6π * ΔR * ΔZ / integral0
+        integral .* normalization, error .* normalization .+ error0 / integral0, neval, fail
     end
 
 end
@@ -267,13 +288,13 @@ module Testing
     Distribution for testing and code optimization.
     Total yield is to be 1e6*2π*(2.5^2 - 1.5^2)/2.
     """
-    struct TestDistribution <: AbstractDistribution    end
+    struct TestDistribution <: AbstractDistribution end
 
     PlasmaDistributions.domain(::TestDistribution) = 1.5, 2.5, -0.5, 0.5
-    PlasmaDistributions.ψ(d::TestDistribution) = (r, z) ->  in_domain.(r, z)
+    PlasmaDistributions.ψ(::TestDistribution) = (r, z) -> in_domain.(r, z)
     PlasmaDistributions.n(::TestDistribution) = ψ -> 1.0 .- ψ
     PlasmaDistributions.Ti(::TestDistribution) = ψ -> 1.0 .- ψ
-    PlasmaDistributions.I(::TestDistribution) =  ψ -> 1.0 .- ψ
+    PlasmaDistributions.I(::TestDistribution) = ψ -> 1.0 .- ψ
     in_domain(r, z) = (1.5 <= r <= 2.5 && -0.5 <= z <= 0.5 ? 0.0 : 1.0)
 
 end
