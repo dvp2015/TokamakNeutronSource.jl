@@ -39,6 +39,7 @@ jobs:
         with:
           files: lcov.info
   docs:
+    if: false  # enable when EQDSKReader is registered and can be installed
     name: Documentation test
     permissions:
       contents: write
@@ -48,12 +49,12 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: "1"
-      - name: Install dependencies
-        run: |
-          julia --project=docs -e '
-            using Pkg
-            Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.instantiate()'
+      # - name: Install dependencies
+      #   run: |
+      #     julia --project=docs -e '
+      #       using Pkg
+      #       Pkg.develop(PackageSpec(path=pwd()))
+      #       Pkg.instantiate()'
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-docdeploy@v1
         env:
