@@ -17,14 +17,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      # minimal testing
       matrix:
-        version:
-          - "1"
-          - "nightly"
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
+        version: ["1"]
+        os: [ubuntu-latest]
+        arch: [x64]
+      # complete testing  TODO: switch to this, when code is stable
+      # matrix:
+      #   version: ["1", "nightly", "1.9.0-alpha1", "1.6.7"]
+      #   os: [ubuntu-latest, windows-latest, macOS-latest]
+      #   arch: [x64, x86]
+      # exclude:
+      #   - os: macOS-latest
+      #     julia-arch: x86
     steps:
       - uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
@@ -39,7 +44,7 @@ jobs:
         with:
           files: lcov.info
   docs:
-    if: false  # enable when EQDSKReader is registered and can be installed
+    # if: false  # enable when EQDSKReader is registered and can be installed
     name: Documentation test
     permissions:
       contents: write
@@ -49,20 +54,7 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: "1"
-      # - name: Install dependencies
-      #   run: |
-      #     julia --project=docs -e '
-      #       using Pkg
-      #       Pkg.develop(PackageSpec(path=pwd()))
-      #       Pkg.instantiate()'
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-docdeploy@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # For authentication with GitHub Actions token
-      - name: Run doctest
-        run: |
-          julia --project=docs -e '
-            using Documenter: DocMeta, doctest
-            using TokamakNeutronSource
-            DocMeta.setdocmeta!(TokamakNeutronSource, :DocTestSetup, :(using TokamakNeutronSource); recursive=true)
-            doctest(TokamakNeutronSource)'

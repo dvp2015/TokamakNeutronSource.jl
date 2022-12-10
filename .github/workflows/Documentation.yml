@@ -2,8 +2,7 @@ name: Documentation
 on:
   push:
     branches:
-      - main
-      - devel
+      - master
     tags: 
       - "*"
   pull_request:
