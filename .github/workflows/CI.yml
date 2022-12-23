@@ -4,7 +4,7 @@ on:
     branches:
       - master
       - devel
-    tags: ['*']
+    tags: ["*"]
   pull_request:
 concurrency:
   # Skip intermediate builds: always.
@@ -17,18 +17,21 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      # minimal testing
       matrix:
-        version:
-          - '1.6.7'
-          - '1.8.3'
-          - '1.9'
-          - 'nightly'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
+        version: ["1"]
+        os: [ubuntu-latest]
+        arch: [x64]
+      # complete testing  TODO: switch to this, when code is stable
+      # matrix:
+      #   version: ["1", "nightly", "1.9.0-alpha1", "1.6.7"]
+      #   os: [ubuntu-latest, windows-latest, macOS-latest]
+      #   arch: [x64, x86]
+      # exclude:
+      #   - os: macOS-latest
+      #     julia-arch: x86
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
@@ -37,26 +40,21 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v2
+      - uses: codecov/codecov-action@v3.1.1
         with:
           files: lcov.info
   docs:
-    name: Documentation
-    runs-on: ubuntu-latest
+    # if: false  # enable when EQDSKReader is registered and can be installed
+    name: Documentation test
     permissions:
       contents: write
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
         with:
-          version: '1'
+          version: "1"
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-docdeploy@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: |
-          julia --project=docs -e '
-            using Documenter: DocMeta, doctest
-            using TokamakNeutronSource
-            DocMeta.setdocmeta!(TokamakNeutronSource, :DocTestSetup, :(using TokamakNeutronSource); recursive=true)
-            doctest(TokamakNeutronSource)'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # For authentication with GitHub Actions token
