@@ -49,6 +49,9 @@ module PlasmaDistributions
     """
     dR_dV(n1, n2, σv) = @. n1 * n2 * σv
 
+    """
+    Base type for DD(pure D) and DT(DT mix) distributions.
+    """
     abstract type AbstractDistribution end
 
     domain(d::AbstractDistribution) = d.rmin, d.rmax, d.zmin, d.zmax
