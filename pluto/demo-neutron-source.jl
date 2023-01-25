@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.18
+# v0.19.19
 
 using Markdown
 using InteractiveUtils
@@ -46,7 +46,10 @@ distr = DDDistribution(eqdsk, excel)
 # ╔═╡ ad233063-b49b-49f2-a6d9-511324b30486
 let
 	using TokamakNeutronSource.Integrations
-	total_yield(distr)[1]
+	total = total_yield(distr)[1]
+	rmin, rmax, zmin, zmax = domain(distr)
+	moment0 = torroidal_segment_moment_0((r,z) -> I(distr, r, z), (rmin, rmax), (zmin, zmax))[1]
+	@assert moment0 ≈ total
 end
 
 # ╔═╡ 0f292ede-4a1f-4387-9f49-e0ac8ee993de
@@ -109,12 +112,6 @@ The mesh quality criteria - the variance of I(r,z) in a cell not more than allow
 """
 
 
-# ╔═╡ a1070c6d-3bb2-4cd8-9c49-fc2a079814c2
-function cell_variance(a, i, j)
-	a, b = extrema(@view a[i:i+1,j:j+1])
-	b - a
-end
-
 # ╔═╡ cbb99594-30c3-4ccf-9251-677fc6755750
 function cell_relative_variance(A, i, j)
 	subA = @view A[i:i+1,j:j+1]
@@ -122,21 +119,16 @@ function cell_relative_variance(A, i, j)
 	nom = b - a	
 	denom = sum(subA)
 	denom <= 0.0 && return 1.0
-	res = nom / denom
-	1.0 <= res && return 1.0
-	4*res
+	res = 4nom / denom
+	min(1.0, res)
 end
 
 # ╔═╡ f453daec-8564-48e4-8869-834d3ef64fd7
 function variance_on_mesh(f, rbins, zbins)
 	nr, nz = length(rbins), length(zbins)
 	matrix = zeros(nr, nz)
-	total = torroidal_segment_yield(
-		f, [rbins[1],rbins[end]], [zbins[1],zbins[end]]
-	)[1]
-	for i in 1:nr, j in 1:nz
-		matrix[i,j] = f(rbins[i], zbins[j]) 
-		# matrix[i,j] = torroidal_segment_yield(f, rbins[i:i+1], zbins[j:j+1])[1] 
+	for i in 1:nr-1, j in 1:nz-1
+		matrix[i,j] = integrate_torroidal_segment(f, rbins[i:i+1], zbins[j:j+1])[1] 
 	end
 	[cell_relative_variance(matrix, i, j) for i = 1:size(matrix, 1)-1, j = 1:size(matrix,2)-1 ]
 end
@@ -145,9 +137,9 @@ end
 let
 	_I(r,z) = I(distr, r, z)
 	rmin, rmax, zmin, zmax = domain(distr)
-	factor = 1
-	r  = range(rmin, rmax, length=factor*(65))
-	z  = range(zmin, zmax, length=factor*(129))
+	factor(n::Int) = n  # Int(floor(0.7n))
+	r  = range(rmin, rmax, length=factor(65))
+	z  = range(zmin, zmax, length=factor(129))
 	# map(length, [r, z])
 	rmids = 0.5(r[1:end-1] .+ r[2:end])
 	zmids = 0.5(z[1:end-1] .+ z[2:end])
@@ -193,39 +185,68 @@ let
 	f	
 end
 
-# ╔═╡ 1b03e78f-fe9a-4a97-8ec4-f732d65244d4
-let
-	rmin, rmax, zmin, zmax = domain(distr)
-	factor = 1
-	r  = range(rmin, rmax, length=ceil(Int, factor*65))
-	z  = range(zmin, zmax, length=ceil(Int, factor*129))
-	_I(r,z) = I(distr, r, z)
-	nr, nz = length(r)-1, length(z)-1
-	matrix = zeros(nr, nz)
-	for i in 1:length(r)-1, j in 1:length(z)-1
-		matrix[i,j] = torroidal_segment_yield(_I, r[i:i+1], z[j:j+1])[1] 
-	end
-	total = sum(matrix) # , matrix   moment 0 - okay
-	rmids = collect(0.5(r[1:end-1] .+ r[2:end]))
-	zmids = collect(0.5(z[1:end-1] .+ z[2:end]))
-	# size(matrix), size(zmids), size(transpose(zmids))
-	repeat(transpose(zmids), nr, 1)
-	r1 = sum(repeat(rmids, 1, nz) .* matrix) / total	
-	z1 = sum(matrix .* repeat(transpose(zmids), nr, 1)) / total	
-	md"""## Moments of neutron emission distribution
-
-	#  | Name    |   Values  
- 	-: | :-----: | :---------:
-	0  | total   |  $total   
-	1  | r1, z1  |  $(r1), $(z1)
-	"""
-end
+# ╔═╡ e453e4a7-7fdb-4adb-9b31-d1f89f83bf13
+md"""
+Total yield and moment-0 of a distribution are the same.
+"""
 
 # ╔═╡ f328d540-9e59-47dd-8169-9b022be9e7f6
+let
+	rmin, rmax, zmin, zmax = domain(distr)
+	torroidal_segment_moment_0((r,z) -> I(distr, r, z), (rmin, rmax), (zmin, zmax))[1]
+end
 
+# ╔═╡ e2dde790-8e0f-4189-9971-a366ff2d6526
+md"""
+	Moment 1 is close magnetic axes coordinates.
+"""
 
-# ╔═╡ ee031b63-17e6-4047-9a75-0bfe2e825127
-l
+# ╔═╡ e8381d26-3899-4f63-a905-aa7a47333401
+let
+	rmin, rmax, zmin, zmax = domain(distr)
+	torroidal_segment_moment_1((r,z) -> I(distr, r, z), (rmin, rmax), (zmin, zmax))[1]
+end
+
+# ╔═╡ a952abea-f29e-46bf-9e7e-8e9bd16b1b2c
+eqdsk.rmaxis, eqdsk.zmaxis
+
+# ╔═╡ 6eec651c-e7ee-40e6-89f7-0b37af8e6c15
+md"""
+## Compute params for SDEF computation.
+"""
+
+# ╔═╡ 187df34e-77a7-4c0f-9d10-ba1edfbdd41f
+let
+	rmin, rmax, zmin, zmax = domain(distr)
+	r  = range(rmin, rmax, length=65)
+	z  = range(zmin, zmax, length=129)
+	100 .* extrema(diff(r)), 100 .* extrema(diff(z))
+end
+
+# ╔═╡ 1f5d7e83-7a13-4046-a7cc-7aa03e293d18
+function compute_sdef_values(distr, nr, nz)
+	rmin, rmax, zmin, zmax = domain(distr)
+	f(r,z) = I(distr, r, z)
+	rbins  = range(rmin, rmax, length=nr)
+	zbins  = range(zmin, zmax, length=nz)
+	src = zeros(nr, nz)
+	for i in 1:nr-1, j in 1:nz-1
+		src[i,j] = integrate_torroidal_segment(f, rbins[i:i+1], zbins[j:j+1])[1] 
+	end
+	rbins, zbins, src ./ sum(src)
+end
+
+# ╔═╡ 216554fb-34d9-4ab8-83e3-bab6f438c5df
+rbins, zbins, src = compute_sdef_values(distr, eqdsk.nw, eqdsk.nh);
+
+# ╔═╡ 6d363253-a395-4f6b-91e9-21e8f9fcabb8
+maximum(src), sum(src), size(src), length(src)
+
+# ╔═╡ b2df9bd8-64d6-4e86-9cbd-2b53e09cdc87
+let
+	ci = argmax(src)
+	rbins[ci[1]], zbins[ci[2]]
+end
 
 # ╔═╡ Cell order:
 # ╠═26433bb2-6ff1-11ed-0943-01e79517b4f5
@@ -242,9 +263,16 @@ l
 # ╠═ae39aefc-80ee-437d-9bb6-e763206e4339
 # ╠═f453daec-8564-48e4-8869-834d3ef64fd7
 # ╠═643e388a-18b3-4c16-bc10-d6f0e455fafd
-# ╠═a1070c6d-3bb2-4cd8-9c49-fc2a079814c2
-# ╠═cbb99594-30c3-4ccf-9251-677fc6755750
-# ╠═1b03e78f-fe9a-4a97-8ec4-f732d65244d4
-# ╠═ad233063-b49b-49f2-a6d9-511324b30486
+# ╟─cbb99594-30c3-4ccf-9251-677fc6755750
+# ╟─e453e4a7-7fdb-4adb-9b31-d1f89f83bf13
+# ╟─ad233063-b49b-49f2-a6d9-511324b30486
 # ╠═f328d540-9e59-47dd-8169-9b022be9e7f6
-# ╠═ee031b63-17e6-4047-9a75-0bfe2e825127
+# ╟─e2dde790-8e0f-4189-9971-a366ff2d6526
+# ╠═e8381d26-3899-4f63-a905-aa7a47333401
+# ╠═a952abea-f29e-46bf-9e7e-8e9bd16b1b2c
+# ╠═6eec651c-e7ee-40e6-89f7-0b37af8e6c15
+# ╠═187df34e-77a7-4c0f-9d10-ba1edfbdd41f
+# ╠═1f5d7e83-7a13-4046-a7cc-7aa03e293d18
+# ╠═216554fb-34d9-4ab8-83e3-bab6f438c5df
+# ╠═6d363253-a395-4f6b-91e9-21e8f9fcabb8
+# ╠═b2df9bd8-64d6-4e86-9cbd-2b53e09cdc87

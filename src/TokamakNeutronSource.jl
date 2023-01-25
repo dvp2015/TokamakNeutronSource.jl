@@ -289,7 +289,9 @@ module Testing
         struct TestDistribution
 
     Distribution for testing and code optimization.
-    Total yield is to be 1e6*2π*(2.5^2 - 1.5^2)/2.
+    Represents cylinder ring with 1.5 ≤ r ≤ 2.5, -0.5 ≤ z ≤ 0.5.
+    ψ(r,z) is 1.0 if (r,z) ∈ the ring, 0 - otherwise.
+    Total yield is the volume of the ring in cm^3: 1e6*2π*(2.5^2 - 1.5^2)/2.
     """
     struct TestDistribution <: AbstractDistribution end
 
