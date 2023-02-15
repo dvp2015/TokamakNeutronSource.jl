@@ -10,10 +10,8 @@ begin
 	Pkg.activate(temp=true)
 	packages = [
 		"Colors",
-		"Cuba",
 		"GLMakie",
 		"KernelDensity",
-		"ProgressBars",
 	]
 	Pkg.add(packages)
 	devdir = Pkg.devdir()
@@ -27,11 +25,10 @@ end
 # ╔═╡ 9597cccc-5f54-4260-bf2e-2fcf4f3a169a
 using 
 	Colors,
-	Cuba,
 	GLMakie,
 	DelimitedFiles,
 	KernelDensity,
-	ProgressBars
+	Printf
 
 # ╔═╡ cbf37834-2756-4138-9dc1-a679537c05a4
 using	LinearAlgebra: norm
@@ -73,54 +70,8 @@ begin
 	extrema(_I)
 end
 
-# ╔═╡ e7b4f8b3-f3f0-4d5c-9080-eea93e01dd17
-function plot_neutron_source(eqdsk::Content, distr::AbstractDistribution)
-	f = Figure(resolution=(600, 800))
-	ax = Axis(
-		f[1,1]; 
-		xlabel=L"R,m", 
-		ylabel=L"Z,m", 
-		aspect=DataAspect(),
-		title=L"$$DD neutron source intensity"
-	)
-	r = rpoints(eqdsk)
-	z = zpoints(eqdsk)
-	xlims!(ax, r[1], r[end])
-	ylims!(ax, z[1], z[end])
-	_I = I(distr, r, z)
-	levels=range(0, 1.3e10, length=14)
-	cntr = contourf!(ax,
-		r, z, _I,
-		levels=levels, 
-		colormap=:bamako, 
-		linestyle="-",
-		linecolor=:black,
-		linewidth=2
-	)
-	rbbs_points = [Point2f(x,y) for (x,y) in zip(eqdsk.rbbbs, eqdsk.zbbbs)]
-	rlim_points = [Point2f(x,y) for (x,y) in zip(eqdsk.rlim, eqdsk.zlim)]
-	scatter!(ax, eqdsk.rmaxis, eqdsk.zmaxis, color=:gray60, marker=:cross, label="Magnetic axis")
-	lines!(ax, rbbs_points, label="Plasma boundary")
-	lines!(ax, rlim_points, label="Limiter")
-	cb=Colorbar(f[1,2], cntr, label=L"$I_{DD}(R,Z)$, $cm^{-3}s^{-1}", ticks=levels[1:2:end])
-	cb.tellheight = true
-	cb.tellwidth = true
-	axislegend(ax)
-	# axs = Axis3(f[1,2])
-	# surface!(axs, r,z,I)
-	f	
-end
-
-# ╔═╡ 6888f022-b9dc-43f6-8759-772f97afc734
-plot_neutron_source(eqdsk, distr)
-
-# ╔═╡ ae39aefc-80ee-437d-9bb6-e763206e4339
-md"""
-# Define appropiate mesh
-
-The mesh quality criteria - the variance of I(r,z) in a cell not more than allowed_variance.
-"""
-
+# ╔═╡ a2eda2d6-ddd8-4525-97b2-58112bcfb60b
+md"""Total yield: $(@sprintf("%.2g", total_yield(distr)[1]))"""
 
 # ╔═╡ cbb99594-30c3-4ccf-9251-677fc6755750
 function cell_relative_variance(A, i, j)
@@ -133,75 +84,10 @@ function cell_relative_variance(A, i, j)
 	min(1.0, res)
 end
 
-# ╔═╡ f453daec-8564-48e4-8869-834d3ef64fd7
-function variance_on_mesh(f, rbins, zbins)
-	nr, nz = length(rbins), length(zbins)
-	matrix = zeros(nr, nz)
-	for i in 1:nr-1, j in 1:nz-1
-		matrix[i,j] = integrate_torroidal_segment(f, rbins[i:i+1], zbins[j:j+1])[1] 
-	end
-	[cell_relative_variance(matrix, i, j) for i = 1:size(matrix, 1)-1, j = 1:size(matrix,2)-1 ]
-end
-
-# ╔═╡ 643e388a-18b3-4c16-bc10-d6f0e455fafd
-let
-	_I(r,z) = I(distr, r, z)
-	rmin, rmax, zmin, zmax = domain(distr)
-	factor(n::Int) = n  # Int(floor(0.7n))
-	r  = range(rmin, rmax, length=factor(65))
-	z  = range(zmin, zmax, length=factor(129))
-	# map(length, [r, z])
-	rmids = 0.5(r[1:end-1] .+ r[2:end])
-	zmids = 0.5(z[1:end-1] .+ z[2:end])
-	vom = variance_on_mesh(_I, r, z)
-	f = Figure(resolution=(600, 800))
-	ax = Axis(
-		f[1,1]; 
-		xlabel=L"R,m", 
-		ylabel=L"Z,m", 
-		aspect=DataAspect(),
-		title=L"$$DD neutron source intensity variance"
-	)
-	xlims!(ax, rmin, rmax)
-	ylims!(ax, zmin, zmax)
-	# top = ceil(100 * maximum(vom))
-	# levels=range(0, top*0.01, length=Int(top)+1)
-	# levels=range(0, 1.3, length=11)
-	# levels = range(0,0.3, length=11)
-	cntr = contourf!(ax,
-		rmids, zmids, vom,
-		# levels=levels, 
-		colormap=:bamako, 
-		linestyle="-",
-		linecolor=:black,
-		linewidth=2
-	)
-	rbbs_points = [Point2f(x,y) for (x,y) in zip(eqdsk.rbbbs, eqdsk.zbbbs)]
-	rlim_points = [Point2f(x,y) for (x,y) in zip(eqdsk.rlim, eqdsk.zlim)]
-	scatter!(ax, eqdsk.rmaxis, eqdsk.zmaxis, color=:gray60, marker=:cross, label="Magnetic axis")
-	lines!(ax, rbbs_points, label="Plasma boundary")
-	lines!(ax, rlim_points, label="Limiter")
-	cb=Colorbar(
-		f[1,2], 
-		cntr, 
-		label=L"Variance", 
-		# ticks=levels[2:2:end]
-	)
-	cb.tellheight = true
-	cb.tellwidth = true
-	axislegend(ax)
-	# axs = Axis3(f[1,2])
-	# surface!(axs, r,z,I)
-	f	
-end
-
 # ╔═╡ e453e4a7-7fdb-4adb-9b31-d1f89f83bf13
 md"""
 Total yield and moment-0 of a distribution are the same.
 """
-
-# ╔═╡ f328d540-9e59-47dd-8169-9b022be9e7f6
-
 
 # ╔═╡ e2dde790-8e0f-4189-9971-a366ff2d6526
 md"""
@@ -278,10 +164,21 @@ datap = DelimitedFiles.readdlm("../wrk/ptrac.csv") .* 0.01  # cm -> m
 
 # ╔═╡ adb6bdd8-e29d-4f80-8385-01e659b47387
 let
+	outliers = String[]
 	foreach(datap[:,1], datap[:,2]) do r, z
-		1.0 < ψ(distr)(r,z) && error("Out of plasma ψ($r, $z) = $(ψ(distr)(r,z))")
+		if 1.0 < ψ(distr)(r,z) 
+			push!(outliers, "ψ($r, $z) = $(ψ(distr)(r,z))")
+		end
 	end
-	md"""All PTRAC points are within plasma volume."""
+	if isempty(outliers)
+		md"""All PTRAC points are within plasma volume."""
+	else
+		md"""
+		$(length(outliers)) outliers:
+		
+		$(join(outliers, "\n\n"))
+		"""
+	end
 end
 
 # ╔═╡ a3a31b4b-2bd1-43e6-a4ad-97d99005b456
@@ -399,6 +296,47 @@ let
 	f
 end
 
+# ╔═╡ e7b4f8b3-f3f0-4d5c-9080-eea93e01dd17
+function plot_neutron_source(eqdsk::Content, distr::AbstractDistribution)
+	f = Figure(resolution=(600, 800))
+	ax = Axis(
+		f[1,1]; 
+		xlabel=L"R,m", 
+		ylabel=L"Z,m", 
+		aspect=DataAspect(),
+		title=L"$$DD neutron source intensity"
+	)
+	r = rpoints(eqdsk)
+	z = zpoints(eqdsk)
+	xlims!(ax, r[1], r[end])
+	ylims!(ax, z[1], z[end])
+	_I = I(distr, r, z)
+	levels=range(0, 1.3e10, length=14)
+	cntr = contourf!(ax,
+		r, z, _I,
+		levels=levels, 
+		colormap=:bamako, 
+		linestyle="-",
+		linecolor=:black,
+		linewidth=2
+	)
+	rbbs_points = [Point2f(x,y) for (x,y) in zip(eqdsk.rbbbs, eqdsk.zbbbs)]
+	rlim_points = [Point2f(x,y) for (x,y) in zip(eqdsk.rlim, eqdsk.zlim)]
+	scatter!(ax, eqdsk.rmaxis, eqdsk.zmaxis, color=:gray60, marker=:cross, label="Magnetic axis")
+	lines!(ax, rbbs_points, label="Plasma boundary")
+	lines!(ax, rlim_points, label="Limiter")
+	cb=Colorbar(f[1,2], cntr, label=L"$I_{DD}(R,Z)$, $cm^{-3}s^{-1}", ticks=levels[1:2:end])
+	cb.tellheight = true
+	cb.tellwidth = true
+	axislegend(ax)
+	# axs = Axis3(f[1,2])
+	# surface!(axs, r,z,I)
+	f	
+end
+
+# ╔═╡ 6888f022-b9dc-43f6-8759-772f97afc734
+plot_neutron_source(eqdsk, distr)
+
 # ╔═╡ 2b5b7b8f-6186-4e8b-b5a1-c5adac250f03
 function ptrac_to_csv(dst, src)
 	PREV_LINE = "       9000         1        40        47         0"
@@ -419,7 +357,7 @@ end
 
 
 # ╔═╡ 13d29728-e0e3-4118-b73e-8509f798047d
-isfile("../wrk/ptrac.csv") || ptrac_to_csv("../wrk/ptrac.csv", "../wrk/ptrac")
+isfile("../wrk/ptrac.csv") || ptrac_to_csv("../wrk/ptrac.csv", "../wrk/ptrac") 
 
 # ╔═╡ a368bb91-e7ae-4fbc-85fe-ede9d95d01dc
 
@@ -434,15 +372,11 @@ isfile("../wrk/ptrac.csv") || ptrac_to_csv("../wrk/ptrac.csv", "../wrk/ptrac")
 # ╠═7e316d24-32ca-4084-b7ec-fa0b3cee1894
 # ╠═11d8369b-a698-4cdb-96ed-5db4244f099e
 # ╠═0f292ede-4a1f-4387-9f49-e0ac8ee993de
-# ╠═e7b4f8b3-f3f0-4d5c-9080-eea93e01dd17
+# ╠═a2eda2d6-ddd8-4525-97b2-58112bcfb60b
 # ╠═6888f022-b9dc-43f6-8759-772f97afc734
-# ╠═ae39aefc-80ee-437d-9bb6-e763206e4339
-# ╠═f453daec-8564-48e4-8869-834d3ef64fd7
-# ╠═643e388a-18b3-4c16-bc10-d6f0e455fafd
 # ╟─cbb99594-30c3-4ccf-9251-677fc6755750
 # ╟─e453e4a7-7fdb-4adb-9b31-d1f89f83bf13
 # ╟─ad233063-b49b-49f2-a6d9-511324b30486
-# ╠═f328d540-9e59-47dd-8169-9b022be9e7f6
 # ╟─e2dde790-8e0f-4189-9971-a366ff2d6526
 # ╠═e8381d26-3899-4f63-a905-aa7a47333401
 # ╠═a952abea-f29e-46bf-9e7e-8e9bd16b1b2c
@@ -462,5 +396,6 @@ isfile("../wrk/ptrac.csv") || ptrac_to_csv("../wrk/ptrac.csv", "../wrk/ptrac")
 # ╠═62369e96-d0cf-4b61-8ee9-b6c049628179
 # ╠═5e863260-478d-4dfb-bd45-df4b15ff0c3d
 # ╠═94bfa226-cd13-4ea5-9ee3-017cd74c95d6
+# ╠═e7b4f8b3-f3f0-4d5c-9080-eea93e01dd17
 # ╠═2b5b7b8f-6186-4e8b-b5a1-c5adac250f03
 # ╠═a368bb91-e7ae-4fbc-85fe-ede9d95d01dc
