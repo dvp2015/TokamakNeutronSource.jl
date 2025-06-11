@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.26
+# v0.19.32
 
 using Markdown
 using InteractiveUtils
@@ -287,12 +287,14 @@ let
 		# colormap = Reverse(:bamako) 
 	)
 	# wireframe!(ax, x, y, z, color=(:black, 0.5))
-	cb=Colorbar(
-		f[1,2], 
-		cntr, 
-		label=L"$$Kernel Density", 
-		# ticks=levels[2:2:end]
-	)
+
+	# TODO dvp: the following causes bug
+	# cb=Colorbar(
+	# 	f[1,2], 
+	# 	cntr, 
+	# 	label=L"$$Kernel Density", 
+	# 	# ticks=levels[2:2:end]
+	# )
 	f
 end
 
