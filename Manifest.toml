@@ -2,7 +2,7 @@
 
 julia_version = "1.11.5"
 manifest_format = "2.0"
-project_hash = "4ffad5cbbb68a1867a5a141815a9be05e48f318f"
+project_hash = "77d217455db31b86d7c0519c60b20f8f51f50fb1"
 
 [[deps.Adapt]]
 deps = ["LinearAlgebra", "Requires"]
@@ -152,7 +152,7 @@ version = "1.6.0"
 
 [[deps.EQDSKReader]]
 deps = ["Interpolations", "StructEquality"]
-git-tree-sha1 = "695e3c214eb1b1bbdf3fb24976a0b4dc2faa7550"
+git-tree-sha1 = "e136fd05f7ed896013ab57133d7b52411ae92ecb"
 repo-rev = "main"
 repo-url = "https://github.com/dvp2015/EQDSKReader.jl.git"
 uuid = "0d45e213-aaf5-468d-97e2-5d9984e6e107"
