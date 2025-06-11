@@ -2,6 +2,7 @@ name: CI
 on:
   push:
     branches:
+      - main
       - master
       - devel
     tags: ["*"]
@@ -15,28 +16,20 @@ jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
     strategy:
       fail-fast: false
-      # minimal testing
       matrix:
-        version: ["1"]
-        os: [ubuntu-latest]
-        arch: [x64]
-      # complete testing  TODO: switch to this, when code is stable
-      # matrix:
-      #   version: ["1", "nightly", "1.9.0-alpha1", "1.6.7"]
-      #   os: [ubuntu-latest, windows-latest, macOS-latest]
-      #   arch: [x64, x86]
-      # exclude:
-      #   - os: macOS-latest
-      #     julia-arch: x86
+        version: ["lts", "1.10", "1.11", "~1.12.0-0"] #, "nightly"]  # as in Pluto
+        os:
+          - [ubuntu-latest, macOS-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v3
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+          arch: ${{ runner.arch }}
+      - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
@@ -44,14 +37,13 @@ jobs:
         with:
           files: lcov.info
   docs:
-    # if: false  # enable when EQDSKReader is registered and can be installed
-    name: Documentation test
+    name: Documentation
     permissions:
       contents: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
         with:
           version: "1"
       - uses: julia-actions/julia-buildpkg@v1

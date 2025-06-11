@@ -223,7 +223,7 @@ let
 	rmin, rmax, zmin, zmax = domain(distr)
 	fontsize_theme = Theme(fontsize = 20, font = "JuliaMono")
 	set_theme!(fontsize_theme, colormap = :bamako)
-	f = Figure(resolution=(700, 800))
+	f = Figure(;size=(700, 800))
 	ax = Axis(
 		f[1,1]; 
 		xlabel=L"R,m", 
@@ -237,9 +237,9 @@ let
 		ptrac_kde,
 		colormap=:bamako, 
 		# colormap=:grays, 
-		linestyle="-",
-		linecolor=:black,
-		linewidth=2
+		# linestyle="-",
+		# linecolor=:black,
+		# linewidth=2
 	)
 	rbbs_points = [Point2f(x,y) for (x,y) in zip(eqdsk.rbbbs, eqdsk.zbbbs)]
 	rlim_points = [Point2f(x,y) for (x,y) in zip(eqdsk.rlim, eqdsk.zlim)]
@@ -300,7 +300,7 @@ end
 
 # ╔═╡ e7b4f8b3-f3f0-4d5c-9080-eea93e01dd17
 function plot_neutron_source(eqdsk::Content, distr::AbstractDistribution)
-	f = Figure(resolution=(600, 800))
+	f = Figure(; size=(600, 800))
 	ax = Axis(
 		f[1,1]; 
 		xlabel=L"R,m", 
@@ -318,16 +318,16 @@ function plot_neutron_source(eqdsk::Content, distr::AbstractDistribution)
 		r, z, _I,
 		levels=levels, 
 		colormap=:bamako, 
-		linestyle="-",
-		linecolor=:black,
-		linewidth=2
+		# linestyle="-",
+		# linecolor=:black,
+		# linewidth=2
 	)
 	rbbs_points = [Point2f(x,y) for (x,y) in zip(eqdsk.rbbbs, eqdsk.zbbbs)]
 	rlim_points = [Point2f(x,y) for (x,y) in zip(eqdsk.rlim, eqdsk.zlim)]
 	scatter!(ax, eqdsk.rmaxis, eqdsk.zmaxis, color=:gray60, marker=:cross, label="Magnetic axis")
 	lines!(ax, rbbs_points, label="Plasma boundary")
 	lines!(ax, rlim_points, label="Limiter")
-	cb=Colorbar(f[1,2], cntr, label=L"$I_{DD}(R,Z)$, $cm^{-3}s^{-1}", ticks=levels[1:2:end])
+	cb=Colorbar(f[1,2], cntr, label=L"$I_{DD}(R,Z)$, $cm^{-3}s^{-1}$", ticks=levels[1:2:end])
 	cb.tellheight = true
 	cb.tellwidth = true
 	axislegend(ax)
