@@ -39,7 +39,7 @@ end
 md"Some statistics:"
 
 # ╔═╡ 083a8c3c-1498-4b46-ad0d-2f0b783c085f
-describe(df)
+describe(df, :min, :max)
 
 # ╔═╡ 48c0e589-3141-4add-bf74-d0b629a04ab0
 md"""
@@ -1858,12 +1858,12 @@ version = "1.13.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═d5bafe4d-7061-4e06-9e4a-e7e9ba9b5824
-# ╠═f0da7363-e781-47e9-bb3e-5840eb76ea7c
+# ╟─d5bafe4d-7061-4e06-9e4a-e7e9ba9b5824
+# ╟─f0da7363-e781-47e9-bb3e-5840eb76ea7c
 # ╟─a15c528e-d934-470e-9689-7a92615146ec
 # ╠═083a8c3c-1498-4b46-ad0d-2f0b783c085f
-# ╠═48c0e589-3141-4add-bf74-d0b629a04ab0
-# ╠═2f767c2d-f783-476d-b10d-3b6e287e394b
+# ╟─48c0e589-3141-4add-bf74-d0b629a04ab0
+# ╟─2f767c2d-f783-476d-b10d-3b6e287e394b
 # ╟─b9928a72-54bd-433a-b1ab-e846957ffef3
 # ╠═f41115fb-672a-4cc2-bcd4-6a5e642a7f54
 # ╠═16963e3d-4244-4b1a-b332-59ce2044a282
