@@ -177,7 +177,7 @@ module PlasmaDistributions
         data = Float64.(XLSX.readdata(path, 1, "A5:D183")[:, [1, 3, 4]])
         d = DataFrame(data, ["ψ", "T", "n"])
         pushfirst!(d, [0.0, d[1, Not(:ψ)]...])  # Add row for ψ == 0.0
-        select!(d, :ψ, :T, :n => (x -> 1e13x) => :n) # scale concentation to cm-3
+        select!(d, :ψ, :T, :n => (x -> 1e13x) => :n) # scale concentration to cm-3
     end
 
     function create_interpolator(df::DataFrame, s::Symbol)
