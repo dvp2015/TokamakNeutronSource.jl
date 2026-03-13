@@ -1,9 +1,18 @@
-#!/usr/bin/env python
-# coding: utf-8
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.1
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
+# ---
 
-# In[1]:
-
-
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -15,32 +24,32 @@ from plasma_scenario import *
 from aux_source import ptrac
 
 
-# In[2]:
+# %%
 
 
 data = np.loadtxt('trt.txt', delimiter='\t') * 100
 
 
-# In[23]:
+# %%
 
 
 fitter = Fitter(a_max = 60, shift_max=10, triang_max=0.2, ellip_max=1.9, R0 = x0+10, Z0=y0)
 
 
-# In[24]:
+# %%
 
 
 scenario = fitter.fit(data[:, 0].reshape(1, -1), data[:, 1].reshape(1, -1), np.array([50]), np.linspace(0, 2 * np.pi, 100))
 
 
-# In[25]:
+# %%
 
 
 scenario = ParametricMagneticSurface(theta=0, shift0=5, shift_slope=0, triang_x=30, triang_y=0.05, ellip0=1, ellipx=30,
                                     ellipy=1.1, shift_max=10, triang_max=0.2, ellip_max=1.9, a_max=60, R0=x0+5, Z0=y0)
 
 
-# In[26]:
+# %%
 
 
 xx, yy = scenario.rz_eval(50, phi)
@@ -48,13 +57,13 @@ plt.plot(xx, yy)
 plt.axes().set_aspect('equal')
 
 
-# In[27]:
+# %%
 
 
 x0, y0
 
 
-# In[28]:
+# %%
 
 
 a = np.linspace(0, 60, 100)
@@ -62,7 +71,7 @@ sh = scenario.shift_eval(a)
 plt.plot(a, sh)
 
 
-# In[29]:
+# %%
 
 
 x0, y0 = np.mean(data, axis=0)
@@ -111,7 +120,7 @@ for i in range(Nx):
         intensity[i, j] = 1 / np.sqrt(2 * np.pi * sig**2) * np.exp(-0.5 * (minor_pts[ind] / sig)**2)
 
 
-# In[30]:
+# %%
 
 
 plt.pcolor(x_bins, y_bins, intensity.transpose(), cmap='jet')
@@ -119,7 +128,7 @@ plt.plot(data[:, 0], data[:, 1], 'r')
 plt.axes().set_aspect('equal')
 
 
-# In[31]:
+# %%
 
 
 sig = 17
@@ -129,13 +138,13 @@ plt.xlabel('a, cm')
 plt.savefig('trt_profile.png', dpi=600)
 
 
-# In[32]:
+# %%
 
 
 from mckit import source
 
 
-# In[33]:
+# %%
 
 
 def create_bin_distributions(bins, start_name):
@@ -164,7 +173,7 @@ def create_bin_distributions(bins, start_name):
     return start_name, distributions
 
 
-# In[34]:
+# %%
 
 
 start_name=1
@@ -186,13 +195,13 @@ z_dist = source.Distribution(start_name + 2, z_indices, r_dist, 'EXT')
 src = source.Source(RAD=r_dist, EXT=z_dist)
 
 
-# In[35]:
+# %% jupyter={"outputs_hidden": true}
 
 
 print(src.mcnp_repr())
 
 
-# In[36]:
+# %%
 
 
 datap = ptrac.read_ptrac('src_test.p')
@@ -201,7 +210,7 @@ for i, p in enumerate(datap):
     pos[i, :] = p.position
 
 
-# In[37]:
+# %%
 
 
 rad = np.linalg.norm(pos[:, :2], axis=1)
@@ -218,7 +227,7 @@ for i, j in zip(index_x, index_y):
 print(out_num)
 
 
-# In[18]:
+# %%
 
 
 plt.pcolor(x_bins, y_bins, probs.transpose() / np.sum(probs), cmap='jet')
@@ -230,7 +239,7 @@ plt.ylabel('z, cm')
 plt.savefig('trt_source.png', dpi=600)
 
 
-# In[19]:
+# %%
 
 
 plt.pcolor(x_bins, y_bins, intensity.transpose(), cmap='jet')
@@ -238,19 +247,19 @@ plt.plot(data[:, 0], data[:, 1], 'r')
 plt.axes().set_aspect('equal')
 
 
-# In[20]:
+# %%
 
 
 distrs = source.expand_matrix_distribution(intensity, x_bins, y_bins)
 
 
-# In[ ]:
+# %%
 
 
 data2 = np.random.permutation(data)
 
 
-# In[ ]:
+# %%
 
 
 plt.plot(data2[:, 0], data2[:, 1])
@@ -258,7 +267,7 @@ plt.plot(data2[:, 0], data2[:, 1], 'r.')
 plt.axes().set_aspect('equal')
 
 
-# In[ ]:
+# %%
 
 
 def get_right_order(x):
@@ -273,13 +282,13 @@ def get_right_order(x):
     return data
 
 
-# In[ ]:
+# %%
 
 
 data3 = get_right_order(data2)
 
 
-# In[ ]:
+# %%
 
 
 plt.plot(data3[:, 0], data3[:, 1], 'r.')
@@ -287,7 +296,7 @@ plt.plot(data3[:, 0], data3[:, 1], 'k')
 plt.axes().set_aspect('equal')
 
 
-# In[ ]:
+# %%
 
 
 

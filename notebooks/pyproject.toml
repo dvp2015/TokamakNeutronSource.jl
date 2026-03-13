@@ -1,20 +1,13 @@
-[tool.poetry]
-name = "tokamak-ns"
+[project]
+name = "tns-notebooks"
 version = "0.1.0"
-description = "Apply mckit to compute source"
-authors = ["dvp2015"]
-license = "MIT"
+description = "Dependencies for Python jupyter notebooks in TokamakNeutronSource.jl project"
 readme = "README.md"
-packages = [{include = "tokamak_ns", from="src"}]
-
-[tool.poetry.dependencies]
-python = ">=3.10,<4.0"
-mckit = "^0.6.22"
-jupyterlab = "^3.5.3"
-matplotlib = "^3.6.3"
-tqdm = "^4.64.1"
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires-python = ">=3.13"
+dependencies = [
+    "jupyterlab>=4.5.6",
+    "jupytext>=1.19.1",
+    "matplotlib>=3.10.8",
+    "mckit>=0.8.4",
+    "tqdm>=4.67.3",
+]

@@ -1,15 +1,22 @@
-#!/usr/bin/env python
-# coding: utf-8
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.1
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
+# ---
 
-# In[1]:
-
-
+# %%
 from typing import Generator
 
 
-# In[2]:
-
-
+# %%
 from pathlib import Path
 
 import numpy as np
@@ -19,36 +26,26 @@ from tqdm import tqdm
 import mckit as mc
 
 
-# In[3]:
+# %%
+# !pwd
 
 
-get_ipython().system('pwd')
-
-
-# In[4]:
-
-
+# %%
 def read_csv(path):
     return np.genfromtxt(path, dtype=float, delimiter=",")
 
 
-# In[6]:
-
-
+# %%
 rbins = read_csv("../wrk/rbins.csv") * 100.0  # m -> cm
 zbins = read_csv("../wrk/zbins.csv") * 100.0
 intensity = read_csv("../wrk/src.csv")
 
 
-# In[7]:
-
-
+# %%
 rbins.shape, zbins.shape, intensity.shape
 
 
-# In[6]:
-
-
+# %%
 from mckit import source
 from mckit.source import create_bin_distributions
 
@@ -75,10 +72,8 @@ z_dist = source.Distribution(start_name + 2, z_indices, r_dist, 'EXT')
 src = source.Source(RAD=r_dist, EXT=z_dist)
 
 
-# In[7]:
-
-
-with open("../wrk/sdef-dd-1.txt", "w") as io:    
+# %%
+with open("../wrk/sdef-dd-2.txt", "w") as io:    
     first_line, text = src.mcnp_repr().split("\n", maxsplit=1)
     comment_line = "c DD source from TRT_215_8T_NBI plasma model"
     first_line = first_line.lower().replace("rad=d2", "cell=47 erg=d1 axs=0. 0. 1. rad=d2")
@@ -86,9 +81,7 @@ with open("../wrk/sdef-dd-1.txt", "w") as io:
     io.write("\n".join([comment_line, first_line, second_line, text, ""]))
 
 
-# In[8]:
-
-
+# %%
 def ptrac_to_csv(dst: Path, src: Path) -> None:
     PREV_LINE = "       9000         1        40        47         0"
     wait_prev = True
@@ -106,32 +99,18 @@ def ptrac_to_csv(dst: Path, src: Path) -> None:
                     wait_prev = True
 
 
-# In[9]:
+# %%
+ptrac_to_csv(Path("../wrk/ptrac.csv"), Path("../wrk/ptrac"))
 
 
-# ptrac_to_csv(Path("../wrk/ptrac.csv"), Path("../wrk/ptrac"))
-
-
-# In[48]:
+# %%
 
 
 datap = np.genfromtxt("../wrk/ptrac.csv")
 
 
-# In[49]:
+# %%
 
 
 datap
-
-
-# In[53]:
-
-
-
-
-
-# In[ ]:
-
-
-
 
