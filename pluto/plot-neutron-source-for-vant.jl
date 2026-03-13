@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.10
+# v0.20.23
 
 using Markdown
 using InteractiveUtils
@@ -10,15 +10,17 @@ begin
 	Pkg.activate(temp=true)
 	packages = [
 		"Colors",
+		"DataFrames",
 		"GLMakie",
 		"KernelDensity",
+		"XLSX",
 	]
 	Pkg.add(packages)
 	devdir = Pkg.devdir()
 	eqdsk_pkg_dir = joinpath(devdir, "EQDSKReader.jl")
-	tns_pkg_dir = joinpath(devdir, "TokamakNeutronSource")
-	Pkg.add(path=eqdsk_pkg_dir)
-	Pkg.add(path=tns_pkg_dir)
+	tns_pkg_dir = joinpath(devdir, "TokamakNeutronSource.jl")
+	Pkg.develop(path=eqdsk_pkg_dir)
+	Pkg.develop(path=tns_pkg_dir)
 	using EQDSKReader, TokamakNeutronSource
 end
 
@@ -26,9 +28,11 @@ end
 using 
 	Colors,
 	GLMakie,
+    DataFrames,
 	DelimitedFiles,
 	KernelDensity,
-	Printf
+	Printf,
+	XLSX
 
 # ╔═╡ cbf37834-2756-4138-9dc1-a679537c05a4
 using	LinearAlgebra: norm
@@ -42,6 +46,12 @@ begin
 	eqdsk_path = joinpath(tns_pkg_dir, "test", "data", "beforeTQ.eqdsk")
 	excel_path = joinpath(tns_pkg_dir, "test", "data", "TRT_215_8T_NBI.xlsx")
 	@assert all(isfile, [eqdsk_path, excel_path])
+end
+
+# ╔═╡ 09221d19-80c5-42db-bc0c-e933bf0479f6
+begin
+	output_path = joinpath(tns_pkg_dir, "wrk", "plot-neutron-source-for-vant")
+	mkpath(output_path)
 end
 
 # ╔═╡ 50b9960f-7673-4975-b24b-d96ebb16d50f
@@ -183,7 +193,7 @@ end
 
 # ╔═╡ a3a31b4b-2bd1-43e6-a4ad-97d99005b456
 let
-	f = Figure(resolution=(600, 800))
+	f = Figure(size=(600, 800))
 	ax = Axis(
 		f[1,1]; 
 		xlabel=L"R,m", 
@@ -254,14 +264,11 @@ let
 	)
 	cb.tellheight = true
 	cb.tellwidth = true
-	axislegend(ax)
+	# axislegend(ax)
 	# axs = Axis3(f[1,3])
 	# surface!(axs, r,z,ptrac_kde.density)
 	f	
 end
-
-# ╔═╡ 5e863260-478d-4dfb-bd45-df4b15ff0c3d
-
 
 # ╔═╡ 94bfa226-cd13-4ea5-9ee3-017cd74c95d6
 let
@@ -323,7 +330,7 @@ function plot_neutron_source(eqdsk::Content, distr::AbstractDistribution)
 	scatter!(ax, eqdsk.rmaxis, eqdsk.zmaxis, color=:gray60, marker=:cross, label="Magnetic axis")
 	lines!(ax, rbbs_points, label="Plasma boundary")
 	lines!(ax, rlim_points, label="Limiter")
-	cb=Colorbar(f[1,2], cntr, label=L"$I_{DD}(R,Z)$, $см^{-3}с^{-1}$", ticks=levels[1:2:end])
+	cb=Colorbar(f[1,2], cntr, label=L"$I_{DD}$, $см^{-3}с^{-1}$", ticks=levels[1:2:end])
 	cb.tellheight = true
 	cb.tellwidth = true
 	f	
@@ -332,8 +339,7 @@ end
 # ╔═╡ 6888f022-b9dc-43f6-8759-772f97afc734
 begin
 	fig2 = plot_neutron_source(eqdsk, distr)
-	mkpath("img")
-	save(joinpath("img", "fig2-dd-neutron-source.png"), fig2)
+	save(joinpath(output_path, "fig2-dd-neutron-source.png"), fig2)
 	fig2
 end
 
@@ -360,13 +366,80 @@ end
 isfile("../wrk/ptrac.csv") || ptrac_to_csv("../wrk/ptrac.csv", "../wrk/ptrac") 
 
 # ╔═╡ a368bb91-e7ae-4fbc-85fe-ede9d95d01dc
+md"""
+## Plot I(ψ)
+"""
 
+# ╔═╡ 6c0c235d-8291-48ed-87c8-c0d64b161150
+begin
+	psi = excel[!, "ψ"]
+	Y = I(distr)(psi)
+end
+
+# ╔═╡ 0f96bad4-4690-4401-b377-f1b792ba8add
+insertcols!(excel, :n, (:I=>Y), after=true)
+
+# ╔═╡ 52a270ab-ac9b-4dd0-b727-93123bc6d0ff
+excel
+
+# ╔═╡ 9e191d8e-4558-4cc2-8bf2-ae9ac70dd299
+XLSX.writetable(joinpath(output_path, "psi-t-n-I.xlsx"), "ψ-distributions"=>excel, overwrite=true)
+
+# ╔═╡ 350df4d4-d70e-4961-8ae0-8b8f602d89a3
+function plot_neutron_source_vs_psi(excel::DataFrame)
+	f = Figure()
+	ax1 = Axis(
+		f[1,1]; 
+		ylabel=L"T_{i},\ keV",
+		ylabelcolor=:blue,
+		yticklabelcolor=:blue,
+		limits=(0.0, 1.0, 0.0, 23),
+		# xgridvisible=false,
+		ygridvisible=false,
+	)
+	ax2 = Axis(
+		f[1,1]; 
+		ylabel=L"n_{i},\ 10^{14}cm^{-3}",
+		ylabelcolor=:red,
+		yticklabelcolor=:red,
+		yaxisposition = :right,
+		limits=(0.0, 1.0, 0.0, 1),
+		xgridvisible=false,
+		ygridvisible=false,
+	)
+	hidespines!(ax2)
+	hidexdecorations!(ax2)
+	ax3 = Axis(
+		f[2,1]; 
+		xlabel=L"ψ", 
+		ylabel=L"I,\ 10^{10}cm^{-3}s^{-1}",
+		ylabelcolor=:green,
+		yticklabelcolor=:green,
+		limits=(0.0, 1.0, 0, 1.5),
+	)
+	plot!(ax1, excel.:ψ, excel.:T, color=:blue )
+	plot!(ax2, excel.:ψ, 1e-14*excel.:n, color=:red )
+    plot!(ax3, excel.:ψ, 1e-10*excel.:I, color=:green )
+	f	
+end
+
+
+
+# ╔═╡ d8e24d69-c661-47d6-9016-f07ca8272f36
+
+
+# ╔═╡ 61954cdc-6ea6-45cd-979a-7add00c67208
+fig3 = plot_neutron_source_vs_psi(excel)
+
+# ╔═╡ 8625e77c-7941-4a99-9104-6f1ae5625ba7
+save(joinpath(output_path, "fig3-neutron-source-vs-psi.png"), fig3)
 
 # ╔═╡ Cell order:
 # ╠═26433bb2-6ff1-11ed-0943-01e79517b4f5
 # ╠═9597cccc-5f54-4260-bf2e-2fcf4f3a169a
 # ╠═cbf37834-2756-4138-9dc1-a679537c05a4
 # ╠═5f37ce53-477f-498d-b1ea-613fae26f3f8
+# ╠═09221d19-80c5-42db-bc0c-e933bf0479f6
 # ╠═50b9960f-7673-4975-b24b-d96ebb16d50f
 # ╠═e8552241-d48d-4469-abae-484db725af36
 # ╠═7e316d24-32ca-4084-b7ec-fa0b3cee1894
@@ -380,7 +453,7 @@ isfile("../wrk/ptrac.csv") || ptrac_to_csv("../wrk/ptrac.csv", "../wrk/ptrac")
 # ╟─e2dde790-8e0f-4189-9971-a366ff2d6526
 # ╠═e8381d26-3899-4f63-a905-aa7a47333401
 # ╠═a952abea-f29e-46bf-9e7e-8e9bd16b1b2c
-# ╠═6eec651c-e7ee-40e6-89f7-0b37af8e6c15
+# ╟─6eec651c-e7ee-40e6-89f7-0b37af8e6c15
 # ╠═187df34e-77a7-4c0f-9d10-ba1edfbdd41f
 # ╠═1f5d7e83-7a13-4046-a7cc-7aa03e293d18
 # ╠═216554fb-34d9-4ab8-83e3-bab6f438c5df
@@ -389,13 +462,20 @@ isfile("../wrk/ptrac.csv") || ptrac_to_csv("../wrk/ptrac.csv", "../wrk/ptrac")
 # ╠═b2df9bd8-64d6-4e86-9cbd-2b53e09cdc87
 # ╟─5d15e48f-4de8-4536-bf8a-8481862e6594
 # ╠═13d29728-e0e3-4118-b73e-8509f798047d
-# ╠═67bb75ad-52ba-4e34-b7ce-00756c31e0de
+# ╟─67bb75ad-52ba-4e34-b7ce-00756c31e0de
 # ╠═adb6bdd8-e29d-4f80-8385-01e659b47387
 # ╠═a3a31b4b-2bd1-43e6-a4ad-97d99005b456
 # ╠═b7d215b5-16c2-404b-8613-6d4814ca3beb
 # ╠═62369e96-d0cf-4b61-8ee9-b6c049628179
-# ╠═5e863260-478d-4dfb-bd45-df4b15ff0c3d
 # ╠═94bfa226-cd13-4ea5-9ee3-017cd74c95d6
 # ╠═e7b4f8b3-f3f0-4d5c-9080-eea93e01dd17
 # ╠═2b5b7b8f-6186-4e8b-b5a1-c5adac250f03
 # ╠═a368bb91-e7ae-4fbc-85fe-ede9d95d01dc
+# ╠═6c0c235d-8291-48ed-87c8-c0d64b161150
+# ╠═0f96bad4-4690-4401-b377-f1b792ba8add
+# ╠═52a270ab-ac9b-4dd0-b727-93123bc6d0ff
+# ╠═9e191d8e-4558-4cc2-8bf2-ae9ac70dd299
+# ╠═350df4d4-d70e-4961-8ae0-8b8f602d89a3
+# ╠═d8e24d69-c661-47d6-9016-f07ca8272f36
+# ╠═61954cdc-6ea6-45cd-979a-7add00c67208
+# ╠═8625e77c-7941-4a99-9104-6f1ae5625ba7
