@@ -1,145 +1,70 @@
 using TokamakNeutronSource
 using Test
 
-# @testset "TokamakNeutronSource.jl" begin
+split(x::Float64; δ::Float64=0.1)::Vector{Float64} = [x - δ, x + δ]
 
-# end
-
-@testset "Reaction Rates" begin
-    using TokamakNeutronSource.ReactionRates
-
-    epsilon = 0.001
-
-    temperatures = [
-        0.0,
-        0.2,
-        0.3,
-        0.4,
-        0.5,
-        0.6,
-        0.7,
-        0.8,
-        1.0,
-        # 1.3, # invalid value in the Bosch&Hale table
-        1.5,
-        # 1.8, #
-        2.0,
-        2.5,
-        3.0,
-        4.0,
-        5.0,
-        6.0,
-        8.0,
-        10.0,
-        12.0,
-        15.0,
-        20.0,
-        30.0,
-        40.0,
-        50.0,
-    ]
-
-    expected_dt = [
-        0.0,
-        1.254e-26,
-        7.292e-25,
-        9.344e-24,
-        5.697e-23,
-        2.253e-22,
-        6.740e-22,
-        1.662e-21,
-        6.857e-21,
-        # 2.546e-20, #  invalid value
-        6.923e-20,
-        # 1.539e-19, #  invalid value
-        2.977e-19,
-        8.425e-19,
-        1.867e-18,
-        5.974e-18,
-        1.366e-17,
-        2.554e-17,
-        6.222e-17,
-        1.136e-16,
-        1.747e-16,
-        2.740e-16,
-        4.330e-16,
-        6.681e-16,
-        7.998e-16,
-        8.649e-16,
-    ]
-
-    expected_ddn = [
-        0.0,
-        4.482e-28,
-        2.004e-26,
-        2.168e-25,
-        1.169e-24,
-        4.200e-24,
-        1.162e-23,
-        2.681e-23,
-        9.933e-23,
-        # 3.319e-22, # invalid value
-        8.284e-22,
-        # 1.713e-21,
-        3.110e-21,
-        7.905e-21,
-        1.602e-20,
-        4.447e-20,
-        9.128e-20,
-        1.573e-19,
-        3.457e-19,
-        6.023e-19,
-        9.175e-19,
-        1.481e-18,
-        2.603e-18,
-        5.271e-18,
-        8.235e-18,
-        1.133e-17,
-    ]
-
-    @testset "Scalar values, DT" begin
-        for (t, e) ∈ zip(temperatures, expected_dt)
-            @test σv_dt(t) ≈ e rtol = epsilon
+@testset "TokamakNeutronSource.jl" begin
+    # include("reaction-rates.jl")
+    @testset "PlasmaDistributions" begin
+        let excel_path = joinpath(@__DIR__, "data", "TRT_215_8T_NBI.xlsx")
+            eqdsk_path = joinpath(@__DIR__, "data", "beforeTQ.eqdsk")
+            @test isfile(eqdsk_path)
+            using TokamakNeutronSource.PlasmaDistributions
+            using TokamakNeutronSource.Integrations
+            df = load_excel(excel_path)
+            @testset "Excel" begin
+                @test df[1, 1] == 0.0
+                @test df[end, 1] == 1.0
+            end
+            eqdsk = Content(eqdsk_path)
+            @testset "DD Distribution" begin
+                distr = DDDistribution(eqdsk, df)
+                @test distr.n(0) ≈ 9.436e13
+                @test distr.n(2) == 0.0
+                @test all(distr.n([0, 2]) .≈ [9.436e13, 0.0])
+                @test Ti(distr, eqdsk.rmaxis, eqdsk.zmaxis) ≈ 21.09
+                @test n(distr, eqdsk.rmaxis, eqdsk.zmaxis) ≈ 9.436e13
+                @test I(distr, 0) ≈ 1.278e10 rtol = 0.001
+                @test I(distr, eqdsk.rmaxis, eqdsk.zmaxis) ≈ 1.278e10 rtol = 0.001
+                actual = I(distr, split(eqdsk.rmaxis), split(eqdsk.zmaxis))
+                @test size(actual) == (2, 2)
+                total, err, neval, fail = total_yield(distr)
+                # 1-st moment of distribution
+                rmin, rmax, zmin, zmax = domain(distr)
+                @assert fail == 0
+                @test total ≈ 9.939e16 rtol = 1e-4
+                @test err / total < 1e-4
+                (r1, z1), (r1err, z1err), neval, fail = torroidal_segment_moment_1(
+                    (r, z) -> I(distr, r, z), (rmin, rmax), (zmin, zmax)
+                )
+                @assert fail == 0
+                @test r1 ≈ 2.187 rtol = 3e-4
+                @test z1 ≈ 0.496 rtol = 5e-4
+                @test r1err / r1 < 3e-4
+                @test z1err / z1 < 3e-4
+            end
+            @testset "DT Distribution" begin
+                distr = DTDistribution(eqdsk, df)
+                nd, nt = concentrations(distr, 0)
+                @assert nd == nt == 0.5 * 9.436e13
+                @test I(distr, 0) ≈ 1.034e12 rtol = 0.001
+                @test I(distr, eqdsk.rmaxis, eqdsk.zmaxis) ≈ 1.034e12 rtol = 0.001
+                # test vectorization
+                actual = I(distr, split(eqdsk.rmaxis), split(eqdsk.zmaxis))
+                @test size(actual) == (2, 2)
+                total, err, neval, fail = total_yield(distr)
+                @assert fail == 0
+                @test total ≈ 8.438e18 rtol = 1e-4
+                @test err / total < 1e-4
+            end
         end
     end
-
-    @testset "Scalar values, DDN" begin
-        for (t, e) ∈ zip(temperatures, expected_ddn)
-            @test σv_ddn(t) ≈ e rtol = epsilon
-        end
-    end
-
-    @testset "Vectorization with '.', DT" begin
-        actual = σv_dt.(temperatures)
-        @test maximum(abs.(actual .- expected_dt)) < epsilon
-    end
-
-    @testset "Vectorization with '.', DDN" begin
-        actual = σv_ddn.(temperatures)
-        @test maximum(abs.(actual .- expected_ddn)) < epsilon
-    end
-
-    @testset "Vector argument, DT" begin
-        actual = σv_dt(temperatures)
-        @test maximum(abs.(actual .- expected_dt)) < epsilon
-    end
-
-    @testset "Vector argument, DDN" begin
-        actual = σv_ddn(temperatures)
-        @test maximum(abs.(actual .- expected_ddn)) < epsilon
-    end
-
-    @testset "Matix argument, DT" begin
-        indices = [1 3; 5 7]
-        temps = temperatures[indices]
-        actual = sigmav_dt(temps)   # alias should also work
-        @test maximum(abs.(actual .- expected_dt[indices])) < epsilon
-    end
-
-    @testset "Matix argument, DDN" begin
-        indices = [1 3; 8 10]
-        temps = temperatures[indices]
-        actual = sigmav_ddn(temps)
-        @test maximum(abs.(actual .- expected_ddn[indices])) < epsilon
+    @testset "Testing utils" begin
+        using TokamakNeutronSource.Integrations
+        using TokamakNeutronSource.Testing
+        total, err, neval, fail = total_yield(TestDistribution())
+        @assert fail == 0
+        @test total ≈ 0.5 * 1e6 * 2π * (2.5^2 - 1.5^2) rtol = 1e-4
+        @test err / total < 1e-4
     end
 end

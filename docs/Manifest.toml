@@ -2,7 +2,7 @@
 
 julia_version = "1.8.3"
 manifest_format = "2.0"
-project_hash = "d429b44efcc750f0ce2e11eac7d04cb245d70ba7"
+project_hash = "e0c77beb18dc1f6cce661ebd60658c0c1a77390f"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -98,11 +98,6 @@ uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 [[deps.Test]]
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
-[[deps.TokamakNeutronSource]]
-path = ".."
-uuid = "b9cabe2b-166f-490c-9eed-ccf8ae448f22"
-version = "0.1.0"
 
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
